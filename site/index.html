@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Short Cut — the shorter street, on Android</title>
+    <meta
+      name="description"
+      content="Short Cut routes you along the least distance through streets you can actually ride or walk, and shows what the fastest route costs in extra metres. Download the Android APK directly."
+    />
+    <meta name="theme-color" content="#F0F2E9" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="favicon.png" sizes="any" />
+    <link rel="apple-touch-icon" href="assets/icon.png" />
+    <link rel="canonical" href="https://chandu4143.github.io/shortcut/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Short Cut — take the shorter street" />
+    <meta
+      property="og:description"
+      content="Distance-first navigation for Hyderabad. One tap downloads the Android APK."
+    />
+    <meta property="og:url" content="https://chandu4143.github.io/shortcut/" />
+    <meta property="og:image" content="assets/app-home.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell site-header__inner">
+        <a class="brand" href="#top" aria-label="Short Cut, back to top">
+          <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="brand__word">short<span>cut</span></span>
+        </a>
+
+        <nav class="site-nav" aria-label="Page">
+          <a href="#route">The route</a>
+          <a href="#screens">Screens</a>
+          <a href="#install">Install</a>
+          <a href="#questions">Questions</a>
+        </nav>
+
+        <div class="site-header__actions">
+          <span class="version-chip"><span aria-hidden="true"></span>v1.0.0</span>
+          <a class="btn btn--primary btn--small" href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk" data-download>
+            Download APK
+            <svg viewBox="0 0 20 20" aria-hidden="true" class="icon"><path d="M10 3v9m0 0 4-4m-4 4L6 8M4 15.5h12" /></svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero__grid" aria-hidden="true"></div>
+        <div class="shell hero__inner">
+          <div class="hero__copy">
+            <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span>Distance-first navigation</p>
+            <h1 class="hero__title">Take the <br /><em>shorter street.</em></h1>
+            <p class="hero__lede">
+              Short Cut plans your ride or walk along the least distance through streets that are actually open to
+              you — then shows what the conventional fastest route costs in extra metres.
+            </p>
+
+            <div class="hero__actions">
+              <a class="btn btn--primary btn--large" href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk" data-download>
+                Download for Android
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="icon"><path d="M10 3v9m0 0 4-4m-4 4L6 8M4 15.5h12" /></svg>
+              </a>
+              <a class="btn btn--ghost btn--large" href="#route">See how it routes</a>
+            </div>
+
+            <p class="hero__meta">
+              APK · Android 7.0 or newer · 40.8 MB · version 1.0.0 · no account
+            </p>
+          </div>
+
+          <div class="hero__stage">
+            <figure class="phone">
+              <div class="phone__screen">
+                <img
+                  src="assets/app-home.png"
+                  alt="The Short Cut planner: a Hyderabad map behind a sheet that asks for a starting point and a destination."
+                  width="1080"
+                  height="2400"
+                  fetchpriority="high"
+                />
+              </div>
+            </figure>
+
+            <div class="saving-card">
+              <p class="saving-card__trip"><span aria-hidden="true"></span>Koti → Jubilee Hills</p>
+              <p class="saving-card__value"><strong>1.1 km</strong> less</p>
+              <p class="saving-card__note">than the fastest route</p>
+              <span class="saving-card__track" aria-hidden="true"><i></i></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell">
+          <dl class="spec-strip">
+            <div><dt>Platform</dt><dd>Android 7.0+</dd></div>
+            <div><dt>Download</dt><dd>40.8 MB APK</dd></div>
+            <div><dt>Streets</dt><dd>OpenStreetMap</dd></div>
+            <div><dt>Account</dt><dd>Not required</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section section--route" id="route">
+        <div class="shell">
+          <div class="section__head">
+            <h2 class="section__title">Fastest and shortest are rarely the same line.</h2>
+            <p class="section__lede">
+              A road that carries traffic quickly is not always the road that covers less ground. Short Cut ranks by
+              distance and keeps the fastest option next to it, so the trade-off is visible before you set off.
+            </p>
+          </div>
+
+          <div class="panel compare">
+            <div class="compare__map">
+              <span class="compare__tag">Illustrative route</span>
+              <svg class="map" viewBox="0 0 660 440" role="img" aria-labelledby="map-title map-desc">
+                <title id="map-title">Two example routes across a Hyderabad street grid</title>
+                <desc id="map-desc">
+                  A short coral route and a longer dashed route share the same start and destination pins.
+                </desc>
+                <rect width="660" height="440" fill="#E9EDE2" />
+
+                <g fill="#E0E5D7">
+                  <rect x="120" y="106" width="40" height="132" rx="3" />
+                  <rect x="182" y="106" width="106" height="132" rx="3" />
+                  <rect x="312" y="106" width="76" height="132" rx="3" />
+                  <rect x="432" y="106" width="76" height="132" rx="3" />
+                  <rect x="572" y="106" width="76" height="132" rx="3" />
+                  <rect x="10" y="260" width="38" height="78" rx="3" />
+                  <rect x="120" y="260" width="40" height="78" rx="3" />
+                  <rect x="182" y="260" width="106" height="78" rx="3" />
+                  <rect x="312" y="260" width="76" height="78" rx="3" />
+                  <rect x="432" y="260" width="76" height="78" rx="3" />
+                  <rect x="572" y="260" width="76" height="78" rx="3" />
+                  <rect x="120" y="362" width="40" height="66" rx="3" />
+                  <rect x="312" y="362" width="76" height="66" rx="3" />
+                  <rect x="182" y="30" width="76" height="54" rx="3" />
+                  <rect x="312" y="30" width="46" height="54" rx="3" />
+                  <rect x="432" y="30" width="76" height="54" rx="3" />
+                </g>
+
+                <rect x="190" y="362" width="110" height="66" rx="9" fill="#DCE7C6" />
+                <path d="M380 440c40-30 80-42 140-50s90-10 140-14v64z" fill="#CBE0D8" />
+
+                <g class="map__streets" fill="none" stroke="#FBFCF7" stroke-linecap="round">
+                  <path d="M0 96h660" stroke-width="9" />
+                  <path d="M0 250c180 0 240-10 360-6s200 14 300 6" stroke-width="9" />
+                  <path d="M0 350h660" stroke-width="9" />
+                  <path d="M110 0v440" stroke-width="9" />
+                  <path d="M300 0v440" stroke-width="9" />
+                  <path d="M560 0v440" stroke-width="9" />
+                  <path d="M60 0v440" stroke-width="5" />
+                  <path d="M170 96v254" stroke-width="5" />
+                  <path d="M400 96v344" stroke-width="5" />
+                  <path d="M280 30h280" stroke-width="5" />
+                  <path d="M520 150h140" stroke-width="5" />
+                  <path d="M110 160h190" stroke-width="5" />
+                  <path d="M300 300h260" stroke-width="5" />
+                </g>
+
+                <g class="map__routes" fill="none" stroke-linejoin="round" stroke-linecap="round">
+                  <path d="M110 350V96h170V30h280v66" stroke="#FBFCF7" stroke-width="10" />
+                  <path
+                    class="map__route map__route--fast"
+                    d="M110 350V96h170V30h280v66"
+                    stroke="#7B9298"
+                    stroke-width="4"
+                    stroke-dasharray="9 8"
+                  />
+                  <path d="M110 350h60v-100h130v-90h260v-64" stroke="#FBFCF7" stroke-width="11" />
+                  <path
+                    class="map__route map__route--short"
+                    d="M110 350h60v-100h130v-90h260v-64"
+                    stroke="#E45537"
+                    stroke-width="5.5"
+                  />
+                </g>
+
+                <circle cx="110" cy="350" r="9" fill="#2B6968" stroke="#FBFCF7" stroke-width="4" />
+                <circle cx="560" cy="96" r="9" fill="#E45537" stroke="#FBFCF7" stroke-width="4" />
+                <g class="map__label">
+                  <rect x="128" y="366" width="96" height="26" rx="13" fill="#FBFCF7" />
+                  <text x="176" y="383" text-anchor="middle">Koti</text>
+                  <rect x="436" y="30" width="150" height="26" rx="13" fill="#FBFCF7" />
+                  <text x="511" y="47" text-anchor="middle">Jubilee Hills</text>
+                </g>
+              </svg>
+
+              <ul class="map__legend">
+                <li><span class="key key--solid" aria-hidden="true"></span>Shortest, ranked by distance</li>
+                <li><span class="key key--dashed" aria-hidden="true"></span>Fastest, ranked by time</li>
+              </ul>
+            </div>
+
+            <div class="compare__body">
+              <p class="compare__trip">Koti → Jubilee Hills Check Post</p>
+
+              <div class="compare__mode">
+                <span class="compare__mode-label">Travel mode</span>
+                <div class="segmented" role="group" aria-label="Travel mode">
+                  <button type="button" class="segmented__btn is-selected" data-mode="ride" aria-pressed="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><circle cx="6" cy="17" r="3.2" /><circle cx="18" cy="17" r="3.2" /><path d="M9 17l4-6h4M9 17h5" /></svg>
+                    Ride
+                  </button>
+                  <button type="button" class="segmented__btn" data-mode="walk" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><circle cx="13" cy="5" r="1.8" /><path d="M12 9l-3 4 2 3-2 5M12 9l3 3 3 1" /></svg>
+                    Walk
+                  </button>
+                </div>
+              </div>
+
+              <div class="compare__rows" aria-live="polite">
+                <div class="compare-row compare-row--short">
+                  <div class="compare-row__name">
+                    <span class="key key--solid" aria-hidden="true"></span>
+                    <span>Shortest route<small>ranked by distance</small></span>
+                  </div>
+                  <div class="compare-row__stats">
+                    <strong data-short-distance>9.1 km</strong>
+                    <span data-short-time>34 min</span>
+                  </div>
+                </div>
+                <div class="compare-row">
+                  <div class="compare-row__name">
+                    <span class="key key--dashed" aria-hidden="true"></span>
+                    <span>Fastest route<small>engine estimate</small></span>
+                  </div>
+                  <div class="compare-row__stats">
+                    <strong data-fast-distance>10.2 km</strong>
+                    <span data-fast-time>29 min</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="compare__delta" data-delta>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13m0 0-4-4m4 4-4 4M20 16H7m0 0 4 4m-4-4 4-4" /></svg>
+                <span><span data-delta-distance>1.1 km</span> less ground, about <span data-delta-time>5 minutes</span> more on the road.</span>
+              </p>
+
+              <p class="compare__note">
+                Example trip through Hyderabad. Real routes follow mapped access, one-way tags and the streets that
+                exist for your mode.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="shell">
+          <div class="section__head section__head--wide">
+            <h2 class="section__title">What the build actually does.</h2>
+            <p class="section__lede">
+              Short Cut is a free pilot for Hyderabad: a rider's tool that measures the map honestly instead of
+              optimising for the clock alone.
+            </p>
+          </div>
+
+          <ul class="features">
+            <li class="feature">
+              <span class="feature__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 19h6l4-6 3-4 3 2" /><circle cx="4" cy="19" r="2" /><circle cx="20" cy="11" r="2" /></svg>
+              </span>
+              <h3 class="feature__title">Distance first, by design</h3>
+              <p class="feature__body">
+                Routes are ranked by metres over streets that permit your mode of travel. One-way tags and access
+                restrictions are read from the map, not assumed.
+              </p>
+            </li>
+            <li class="feature">
+              <span class="feature__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z" /><circle cx="12" cy="9" r="2.5" /></svg>
+              </span>
+              <h3 class="feature__title">Guidance that keeps up</h3>
+              <p class="feature__body">
+                Live GPS tracking, off-route rerouting and spoken prompts keep the ride moving. A preview drive runs
+                the whole route before you leave the house.
+              </p>
+            </li>
+            <li class="feature">
+              <span class="feature__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M10.5 13.5 20 4M20 4h-6m6 0v6" /><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" /></svg>
+              </span>
+              <h3 class="feature__title">Opens the links you get sent</h3>
+              <p class="feature__body">
+                Someone shares a pin on WhatsApp and it arrives as a Google Maps link. Short Cut answers
+                <code>geo:</code> and <code>google.navigation:</code> links, so the route opens where you want it.
+              </p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section--screens" id="screens">
+        <div class="shell">
+          <div class="section__head">
+            <h2 class="section__title">Three screens, no clutter.</h2>
+            <p class="section__lede">
+              A planner, a search field and a route card. Everything else is the map you are standing on.
+            </p>
+          </div>
+
+          <div class="shots">
+            <figure class="shot">
+              <div class="phone phone--small">
+                <div class="phone__screen">
+                  <img src="assets/app-home.png" alt="Home screen with the planner sheet over a map." width="1080" height="2400" loading="lazy" />
+                </div>
+              </div>
+              <figcaption>
+                <strong>Plan the trip</strong>
+                Pick a start and a destination, or tap straight on the map.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <div class="phone phone--small">
+                <div class="phone__screen">
+                  <img src="assets/app-search.png" alt="Destination search listing popular places in Hyderabad." width="1080" height="2400" loading="lazy" />
+                </div>
+              </div>
+              <figcaption>
+                <strong>Find any place</strong>
+                Search Hyderabad addresses or jump to a quick destination.
+              </figcaption>
+            </figure>
+            <figure class="shot">
+              <div class="phone phone--small">
+                <div class="phone__screen">
+                  <img src="assets/app-route.png" alt="Planner with a start and destination filled in, ready to route." width="1080" height="2400" loading="lazy" />
+                </div>
+              </div>
+              <figcaption>
+                <strong>Compare, then ride</strong>
+                Both endpoints resolved and both travel modes one tap away.
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--install" id="install">
+        <div class="shell install">
+          <div class="install__copy">
+            <h2 class="section__title">Install it in a minute.</h2>
+            <p class="section__lede">
+              There is no store listing and no sign-up. The file below is the signed release build, served straight
+              from this project's GitHub releases.
+            </p>
+
+            <ol class="steps">
+              <li class="step">
+                <span class="step__num" aria-hidden="true">1</span>
+                <div>
+                  <h3>Download the APK</h3>
+                  <p>Tap the button on the right. Your browser starts the download immediately.</p>
+                </div>
+              </li>
+              <li class="step">
+                <span class="step__num" aria-hidden="true">2</span>
+                <div>
+                  <h3>Open it and allow the install</h3>
+                  <p>Android will ask to allow installs from your browser or file manager. That is the normal prompt for a sideloaded build.</p>
+                </div>
+              </li>
+              <li class="step">
+                <span class="step__num" aria-hidden="true">3</span>
+                <div>
+                  <h3>Allow location and go</h3>
+                  <p>Location while using the app is enough. Keep a connection on: map tiles, search and routing are live.</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <aside class="build-card" aria-labelledby="build-card-title">
+            <div class="build-card__head">
+              <span class="build-card__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div>
+                <h3 id="build-card-title">Short Cut 1.0.0</h3>
+                <p>Release build for Android</p>
+              </div>
+            </div>
+
+            <a class="btn btn--primary btn--block" href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk" data-download>
+              Download the APK
+              <svg viewBox="0 0 20 20" aria-hidden="true" class="icon"><path d="M10 3v9m0 0 4-4m-4 4L6 8M4 15.5h12" /></svg>
+            </a>
+
+            <p class="build-card__hint">Recommended: the 64-bit build below. It fits almost every phone since 2017.</p>
+
+            <ul class="builds">
+              <li class="build is-recommended">
+                <a href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk" data-download>
+                  <span class="build__name">arm64-v8a<small>64-bit phones</small></span>
+                  <span class="build__size">40.8 MB</span>
+                </a>
+              </li>
+              <li class="build">
+                <a href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-armeabi-v7a.apk">
+                  <span class="build__name">armeabi-v7a<small>older 32-bit phones</small></span>
+                  <span class="build__size">32.1 MB</span>
+                </a>
+              </li>
+              <li class="build">
+                <a href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-x86_64.apk">
+                  <span class="build__name">x86_64<small>emulators only</small></span>
+                  <span class="build__size">41.9 MB</span>
+                </a>
+              </li>
+            </ul>
+
+            <details class="checksum">
+              <summary>SHA-256 checksum</summary>
+              <code>E7A4619AB8CFB682F4251F4B1F4FC1EC76B320183B112ACC5B1C4F54BA8A38EE</code>
+            </details>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section section--questions" id="questions">
+        <div class="shell questions">
+          <div class="questions__head">
+            <h2 class="section__title">Questions before you install.</h2>
+            <p class="section__lede">
+              Anything else lives in the
+              <a href="https://github.com/Chandu4143/shortcut">repository</a>.
+            </p>
+          </div>
+
+          <div class="faq">
+            <details class="faq__item">
+              <summary>Will this run on my phone?</summary>
+              <p>
+                If your phone was made in the last eight years, use the arm64 build. It needs Android 7.0 or newer.
+                On a phone that reports “App not installed”, try the 32-bit build.
+              </p>
+            </details>
+            <details class="faq__item">
+              <summary>Why does Android warn me about the file?</summary>
+              <p>
+                The build is signed with a project key rather than a Play Store key, so Android asks you to confirm
+                installs from your browser. That prompt is expected for any app installed outside the store.
+              </p>
+            </details>
+            <details class="faq__item">
+              <summary>Does it work offline?</summary>
+              <p>
+                No. Map tiles, place search and routing all come from live services. The app keeps the route it
+                already calculated, but a new route needs a connection.
+              </p>
+            </details>
+            <details class="faq__item">
+              <summary>Where do the routes come from?</summary>
+              <p>
+                Valhalla calculates the distance-first route, with an OpenStreetMap Overpass fallback if the routing
+                service is unavailable. Public endpoints are best effort, so a failed request shows a retry message
+                rather than a wrong line.
+              </p>
+            </details>
+            <details class="faq__item">
+              <summary>Is it on the Play Store?</summary>
+              <p>
+                Not yet. This release is distributed as an APK from GitHub, which is also the only place to get
+                updates for now.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell site-footer__inner">
+        <div class="site-footer__brand">
+          <a class="brand" href="#top" aria-label="Short Cut, back to top">
+            <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="brand__word">short<span>cut</span></span>
+          </a>
+          <p>Distance-first navigation, built in Hyderabad.</p>
+        </div>
+
+        <nav class="site-footer__links" aria-label="Project links">
+          <a href="https://github.com/Chandu4143/shortcut">Source</a>
+          <a href="https://github.com/Chandu4143/shortcut/releases">All releases</a>
+          <a href="https://github.com/Chandu4143/shortcut/issues">Report an issue</a>
+          <a href="https://www.openstreetmap.org/copyright">OpenStreetMap attribution</a>
+        </nav>
+
+        <p class="site-footer__fine">
+          Map data © OpenStreetMap contributors, available under the Open Database License. Routing by Valhalla with
+          an Overpass fallback. Street coverage and access tags vary; review a route before you take it.
+        </p>
+      </div>
+    </footer>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

@@ -1,28 +1,95 @@
-# Short Cut MVP
+# Short Cut
 
-A responsive, map-first prototype for distance-first routing in Hyderabad. It requests a distance-weighted shortest route and a fastest-route comparison from Valhalla, then falls back to a small locally calculated OpenStreetMap street graph if the route API is unavailable. The shortest route is the default and visually emphasized.
+**Take the shorter street.** Distance-first navigation for Hyderabad: the app plans the route with the least
+distance through streets you can actually ride or walk, then shows what the conventional fastest route costs in
+extra metres.
 
-## Run locally
+<p>
+  <a href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk">
+    <img alt="Download the Android APK" src="https://img.shields.io/badge/Download-Android%20APK-E45537?style=for-the-badge&logo=android&logoColor=white">
+  </a>
+  <a href="https://chandu4143.github.io/shortcut/">
+    <img alt="Open the download site" src="https://img.shields.io/badge/Site-shortcut-2B6968?style=for-the-badge">
+  </a>
+</p>
+
+Tap the button and the APK downloads straight from this repository's releases. No store listing, no account.
+
+## Download
+
+| Build | Size | Use for |
+|---|---:|---|
+| [`ShortCut-1.0.0-arm64-v8a.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk) | 40.8 MB | Every Android phone from roughly 2017 onward. Start here. |
+| [`ShortCut-1.0.0-armeabi-v7a.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-armeabi-v7a.apk) | 32.1 MB | Older 32-bit phones, if the arm64 build says “App not installed”. |
+| [`ShortCut-1.0.0-x86_64.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-x86_64.apk) | 41.9 MB | Emulators and Intel test devices. |
+
+Every asset lives on the [releases page](https://github.com/Chandu4143/shortcut/releases). Requires Android 7.0
+(API 24) or newer and an internet connection for map tiles, place search and routing.
+
+### Install
+
+1. Tap the APK. GitHub serves the file and the browser downloads it.
+2. Open the downloaded file and allow **Install unknown apps** for your browser or file manager when Android asks.
+3. Launch **Short Cut** and allow location while using the app.
+
+The build is signed with a project debug keystore, which is fine for sideloading but **not** Play Store ready. Each
+asset's SHA-256 is in the release notes.
+
+## What it does
+
+- **Distance first.** Routes are ranked by metres over streets that permit your mode of travel; one-way tags and
+  access restrictions are read from the map rather than assumed.
+- **Shortest versus fastest, side by side.** The route card shows both distances, both times and the metres saved.
+- **Live guidance.** GPS tracking, off-route rerouting, turn-by-turn details, spoken prompts and a preview drive.
+- **Links from other apps.** Accepts `geo:`, `google.navigation:` and Google Maps links.
+- **Ride and walk.** Motorcycle and pedestrian profiles, with a map style that keeps streets legible.
+
+Routes come from [Valhalla](https://valhalla.github.io/valhalla/) with an OpenStreetMap
+[Overpass](https://overpass-api.de/) fallback, place search from Nominatim, and tiles from OpenStreetMap raster and
+OpenFreeMap sources. Public endpoints are best effort: a failed request shows a retry message instead of a wrong
+line.
+
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| `mobile/` | The Android app: Expo + React Native, MapLibre, Expo Router. |
+| `src/` | A web prototype of the same distance-first planner (Vite + React + Leaflet). |
+| `site/` | The download site published to GitHub Pages, with its design DNA in `site/design-dna.json`. |
+| `scripts/release/` | Helper that creates the GitHub release and uploads the APKs. |
+
+## Run it locally
+
+Web prototype:
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open the local Vite URL in a browser. Use **Pick start on map**, **Pick destination**, address search, or the location button to set the endpoints. Location access requires HTTPS or localhost.
+Download site (plain HTML, no build step):
 
-## MVP scope
+```sh
+npx http-server site
+```
 
-- Riding and walking route profiles.
-- Valhalla distance-first routing with mode-aware access restrictions.
-- Overpass fallback using a local street graph filtered by mapped access and direction restrictions.
-- Shortest-distance route, estimated time, and a fastest-by-road-type comparison.
-- Map pin selection, place search, current location, and responsive layout.
+Android app:
 
-The fastest option uses the routing engine's estimated travel times. Neither route includes live traffic or guarantees map completeness. OSM tags can be missing or wrong; review the route before travelling.
+```sh
+cd mobile
+npm install
+npx expo start
+```
 
-## Data services
+Release APKs are produced from `mobile/` with the local Gradle build;
+`scripts/release/publish-release.ps1` attaches whatever it finds in `mobile/dist` to the `v1.0.0` release.
 
-The prototype uses the public FOSSGIS Valhalla demo server for primary routing, public OpenStreetMap Overpass instances for fallback street data, Nominatim for place search, and standard OpenStreetMap raster tiles. Requests identify the app with `X-Client-Id: short-cut-mvp.local`. Public endpoints are subject to fair-use limits and best-effort availability; they are suitable for a prototype, not an unmetered commercial service. A production release should use a hosted or self-managed routing/data provider, an approved geocoder and tile plan, and a backend that identifies and rate-limits requests.
+## Data and attribution
 
-OpenStreetMap data is licensed under the Open Database License. Attribution is shown on the map and in the route panel.
+Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), available under the Open
+Database License. Coverage and access tags vary by street; review a route before you take it. No live traffic is
+used anywhere in the app.
+
+## License
+
+The mobile app is scaffolded from Expo's MIT-licensed template; see [`mobile/LICENSE`](mobile/LICENSE).

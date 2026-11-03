@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "name": "Short Cut",
+    "description": "Design DNA extracted from the Short Cut Android app (mobile/src/theme.ts and the shipped screens) and the zed.dev marketing page, used to generate the Short Cut download site.",
+    "source_references": [
+      "mobile/src/theme.ts",
+      "mobile/shot1.png",
+      "mobile/shot2.png",
+      "mobile/shot11.png",
+      "https://zed.dev/"
+    ],
+    "created_at": "2026-11-03"
+  },
+  "design_system": {
+    "color": {
+      "palette_type": "split-complementary",
+      "primary": { "hex": "#172B28", "role": "Ink for headlines and primary type; the paper-and-ink base of the whole system." },
+      "secondary": { "hex": "#2B6968", "role": "Teal for informational accents, status dots and secondary links." },
+      "accent": { "hex": "#E45537", "role": "Coral reserved for action: the route button, the download CTA, start/end route lines." },
+      "neutral": {
+        "scale": ["#FAFBF5", "#F0F2E9", "#EDF0E6", "#E7EBDF", "#DCE2D4", "#C9D2C3", "#93A09A", "#6D7D77", "#2B403B", "#172B28"],
+        "usage": "Lightest surfaces (#FAFBF5) for cards that replace app sheets, #F0F2E9 for the page, #DCE2D4 for hairlines, #6D7D77 for supporting copy, #172B28 for type."
+      },
+      "semantic": {
+        "success": "#2FAF7A",
+        "warning": "#E39A24",
+        "error": "#B3452F",
+        "info": "#657D87"
+      },
+      "surface": {
+        "background": "#F0F2E9",
+        "card": "#FAFBF5",
+        "elevated": "#FFFFFF"
+      },
+      "contrast_strategy": "dark-on-light dominant, high contrast for type with low-contrast hairlines and one saturated coral action per view",
+      "measured_palette": [
+        { "hex": "#F0F2E9", "coverage": 0.42, "role": "background" },
+        { "hex": "#FAFBF5", "coverage": 0.21, "role": "surface" },
+        { "hex": "#172B28", "coverage": 0.14, "role": "text" },
+        { "hex": "#E45537", "coverage": 0.06, "role": "accent" },
+        { "hex": "#2B6968", "coverage": 0.05, "role": "secondary" },
+        { "hex": "#6D7D77", "coverage": 0.07, "role": "muted" },
+        { "hex": "#DCE2D4", "coverage": 0.05, "role": "line" }
+      ]
+    },
+    "typography": {
+      "type_scale": {
+        "display": { "size": "clamp(3rem, 7.2vw, 6.5rem)", "weight": 600, "line_height": 0.92, "tracking": "-0.045em" },
+        "heading_1": { "size": "clamp(2.5rem, 4.4vw, 4rem)", "weight": 600, "line_height": 0.98, "tracking": "-0.035em" },
+        "heading_2": { "size": "1.75rem", "weight": 600, "line_height": 1.1, "tracking": "-0.02em" },
+        "heading_3": { "size": "1.0625rem", "weight": 600, "line_height": 1.3, "tracking": "-0.01em" },
+        "body": { "size": "1.0625rem", "weight": 400, "line_height": 1.62, "tracking": "0" },
+        "body_small": { "size": "0.875rem", "weight": 400, "line_height": 1.55, "tracking": "0" },
+        "caption": { "size": "0.75rem", "weight": 500, "line_height": 1.4, "tracking": "0.01em" },
+        "overline": { "size": "0.6875rem", "weight": 700, "line_height": 1.2, "tracking": "0.14em" }
+      },
+      "font_families": {
+        "heading": "Space Grotesk",
+        "body": "DM Sans",
+        "mono": "ui-monospace, SFMono-Regular, Menlo, monospace"
+      },
+      "font_style_notes": "Geometric grotesque for display with unusually tight tracking, paired with a humanist sans for reading. Two families only, both already shipped inside the app."
+    },
+    "spacing": {
+      "base_unit": "4px",
+      "scale": [4, 8, 12, 16, 24, 32, 48, 64, 96, 128],
+      "content_density": "spacious",
+      "section_rhythm": "large 128px section gaps on desktop, collapsing to 72px on mobile, with hairline rules used as the only division between major blocks"
+    },
+    "layout": {
+      "grid_system": "12-column fluid grid with a 1200px content cap",
+      "max_content_width": "1200px",
+      "columns": 12,
+      "gutter": "32px",
+      "breakpoints": ["480px", "720px", "960px", "1200px"],
+      "alignment_tendency": "asymmetric on the hero and comparison panel, strictly left-aligned for prose"
+    },
+    "shape": {
+      "border_radius": { "small": "10px", "medium": "14px", "large": "26px", "pill": "999px" },
+      "border_usage": "subtle 1px hairlines in #DCE2D4 on cards and dividers, never on type",
+      "divider_style": "1px solid #DCE2D4, full-bleed inside the container"
+    },
+    "elevation": {
+      "shadow_style": "soft diffused, warm-green tinted, never pure black",
+      "levels": {
+        "low": "0 1px 3px rgba(23,49,46,.07)",
+        "medium": "0 8px 24px rgba(23,49,46,.10)",
+        "high": "0 24px 60px rgba(16,32,30,.16)"
+      },
+      "depth_cues": "shadows plus overlapping sheets that echo the app's map-under-sheet composition"
+    },
+    "iconography": {
+      "style": "outlined, rounded joins, 1.7px stroke",
+      "stroke_weight": "1.7px",
+      "size_scale": ["14px", "16px", "20px", "24px"],
+      "preferred_set": "custom inline SVG matching the app's navigation glyphs"
+    },
+    "motion": {
+      "easing": "cubic-bezier(.2,.7,.3,1)",
+      "duration_scale": { "micro": "120ms", "normal": "240ms", "macro": "620ms" },
+      "entrance_pattern": "one staggered hero reveal on load: phone, then headline lines, then CTA",
+      "exit_pattern": "fade only",
+      "philosophy": "minimal functional; motion confirms an action (download, expand, toggle) and never plays on scroll"
+    },
+    "components": {
+      "button_style": "coral filled pill with 3px darker bottom edge for primary actions, paper-on-hairline pill for secondary",
+      "input_style": "not used on the marketing page; the app's white field with 8px radius is echoed in the demo panel",
+      "card_style": "warm white sheet, 26px radius, 1px hairline, soft shadow, generous 32-40px padding",
+      "navigation_pattern": "sticky single-row header with brand lockup, text links, version chip and a persistent download button",
+      "modal_style": "none; disclosure uses native details/summary to stay keyboard and reader friendly",
+      "list_style": "rows separated by hairlines with a leading glyph and a trailing metric, mirroring the app's place list",
+      "component_notes": "The phone frame is the only chrome; screenshots sit inside it at their real 9:20 aspect."
+    }
+  },
+  "design_style": {
+    "aesthetic": {
+      "mood": ["calm", "warm", "precise", "practical"],
+      "visual_metaphor": "a folded paper map opened on a table, with one route drawn in coral",
+      "era_influence": "contemporary cartography and Swiss transit signage",
+      "genre": "product-led indie utility",
+      "personality_traits": ["unhurried", "honest", "engineered", "approachable"],
+      "adjectives": ["papery", "legible", "spare", "confident"]
+    },
+    "visual_language": {
+      "complexity": "minimal",
+      "ornamentation": "subtle accents",
+      "whitespace_usage": "generous; type is given room to act as the layout",
+      "visual_weight_distribution": "heavy display type anchoring the left, imagery offset to the right",
+      "focal_strategy": "single hero element",
+      "contrast_level": "medium",
+      "texture_usage": "flat paper tone, hairline rules, no gradients except the app's coral button"
+    },
+    "composition": {
+      "hierarchy_method": "scale contrast",
+      "balance_type": "asymmetric",
+      "flow_direction": "left to right, top to bottom, with a single diagonal route line breaking the grid",
+      "grouping_strategy": "proximity and hairline separators rather than boxes around everything",
+      "negative_space_role": "frames the one route line and the phone, and lets the download action breathe"
+    },
+    "imagery": {
+      "photo_treatment": "not used",
+      "illustration_style": "schematic street diagram drawn in SVG with the app's palette",
+      "graphic_elements": "brand mark of three skewed bars, route lines, map pins, hairline grids",
+      "pattern_usage": "none",
+      "image_shape": "screenshots clipped to a 9:20 rounded phone frame"
+    },
+    "interaction_feel": {
+      "feedback_style": "immediate, colour-led; buttons depress by 1px with their shadow removed",
+      "hover_behavior": "coral darkens, teal links underline, route lines brighten",
+      "transition_personality": "snappy",
+      "loading_style": "none needed; the page is static",
+      "microinteraction_density": "low"
+    },
+    "brand_voice_in_ui": {
+      "tone": "plain, specific, a little dry",
+      "formality": "casual",
+      "cta_style": "direct imperative",
+      "empty_state_approach": "not applicable",
+      "error_tone": "matter-of-fact, states the fix"
+    }
+  },
+  "visual_effects": {
+    "overview": {
+      "effect_intensity": "subtle-accent",
+      "performance_tier": "lightweight",
+      "fallback_strategy": "disable transitions under prefers-reduced-motion; the animated route draws itself statically",
+      "primary_technology": "SVG + CSS only"
+    },
+    "background_effects": {
+      "type": "none",
+      "description": "Flat paper with a faint hairline street grid clipped behind the hero only.",
+      "technology": "inline SVG",
+      "params": { "color_palette": ["#E7EBDF"], "speed": "0", "density": "sparse", "opacity": 0.55, "blend_mode": "normal" }
+    },
+    "particle_systems": {
+      "enabled": false, "type": "none", "description": "none", "technology": "none",
+      "params": { "count": 0, "shape": "none", "size_range": "0", "movement_pattern": "none", "color_behavior": "none", "interaction": "none", "spawn_area": "none" }
+    },
+    "3d_elements": {
+      "enabled": false, "type": "none", "description": "none", "technology": "none",
+      "params": { "renderer": "none", "lighting": "none", "camera": "none", "materials": "none", "geometry": "none", "post_processing": [], "interaction_model": "none" }
+    },
+    "shader_effects": {
+      "enabled": false, "type": "none", "description": "none", "technology": "none",
+      "params": { "uniforms": [], "vertex_manipulation": "none", "fragment_output": "none", "noise_type": "none", "distortion": "none" }
+    },
+    "scroll_effects": {
+      "parallax": { "enabled": false, "layers": 0, "depth_range": "0", "speed_curve": "none" },
+      "scroll_triggered_animations": { "enabled": false, "trigger_points": [], "animation_type": "none", "scrub_behavior": "none" },
+      "scroll_morphing": { "enabled": false, "description": "none" }
+    },
+    "text_effects": {
+      "type": "none",
+      "description": "Static type; the only motion is the hero's single load-in.",
+      "technology": "CSS",
+      "params": { "split_strategy": "by-line", "animation_per_unit": "none", "stagger": "none", "effect_style": "none" }
+    },
+    "cursor_effects": {
+      "enabled": false, "type": "none", "description": "none",
+      "params": { "shape": "none", "size": "0", "blend_mode": "normal", "trail": "none", "interaction_zone": "none" }
+    },
+    "image_effects": {
+      "type": "none",
+      "description": "Screenshots sit flat in their frame with a soft shadow.",
+      "technology": "CSS",
+      "params": { "filter_pipeline": [], "hover_transform": "none", "reveal_animation": "none", "distortion_type": "none" }
+    },
+    "glassmorphism_neumorphism": {
+      "enabled": true,
+      "style": "glass",
+      "params": { "blur_radius": "14px", "transparency": 0.72, "border_treatment": "1px rgba(220,226,212,.9)", "shadow_type": "soft diffused", "light_source_angle": "top" }
+    },
+    "canvas_drawings": {
+      "enabled": false, "type": "none", "description": "none", "technology": "none",
+      "params": { "draw_method": "none", "animation_loop": "none", "color_scheme": "none", "responsiveness": "none", "interaction": "none" }
+    },
+    "svg_animations": {
+      "enabled": true,
+      "type": "path-draw",
+      "description": "The hero route line draws once from origin pin to destination pin on load.",
+      "params": { "animation_method": "stroke-dashoffset keyframes", "path_morphing": false, "stroke_animation": "dash offset 900ms", "filter_effects": [] }
+    },
+    "composite_notes": "The page stays a static sheet of paper. The single animated moment is the hero route drawing itself; everything else is hairline structure, a sticky glass header and the app's own coral button. The comparison panel is interactive but not animated decoratively: toggling Ride/Walk re-draws the two route paths and swaps two numbers, which is the product's own interaction."
+  }
+}
