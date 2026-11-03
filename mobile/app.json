@@ -19,6 +19,18 @@
       "package": "app.shortcut.mobile",
       "versionCode": 1,
       "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "geo" }],
+          "category": ["DEFAULT", "BROWSABLE"]
+        },
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "google.navigation" }],
+          "category": ["DEFAULT", "BROWSABLE"]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon-foreground.png",
         "backgroundColor": "#F0F2E9",

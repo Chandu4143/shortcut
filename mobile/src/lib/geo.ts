@@ -312,3 +312,95 @@ export function midpoint(coordinates: LatLng[]): LatLng {
 export function isSamePoint(a: Coordinates, b: Coordinates, tolerance = 3): boolean {
   return haversine(a, b) <= tolerance;
 }
+
+export function parseDestinationFromUrl(raw: string): { lat: number; lon: number; label?: string } | null {
+  const readCoords = (text: string) => {
+    const m = text.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
+    if (!m) return null;
+    const lat = Number(m[1]);
+    const lon = Number(m[2]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat, lon };
+  };
+
+  const url = raw.trim();
+  if (url.startsWith('geo:')) {
+    const body = url.slice(4);
+    const head = body.split('?')[0];
+    const direct = readCoords(head);
+    if (direct) return direct;
+    try {
+      const params = new URLSearchParams(body.includes('?') ? body.slice(body.indexOf('?') + 1) : '');
+      const q = params.get('q') || params.get('query');
+      if (q) {
+        const c = readCoords(q);
+        if (c) {
+          const labelMatch = q.match(/\(([^)]+)\)/);
+          return { ...c, label: labelMatch?.[1] };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
+  if (url.startsWith('google.navigation:')) {
+    const query = url.slice('google.navigation:'.length);
+    try {
+      const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
+      const q = params.get('q') || params.get('query') || params.get('destination');
+      if (q) {
+        const c = readCoords(q);
+        if (c) return c;
+      }
+    } catch {
+      // ignore
+    }
+    const m = url.match(/[?&](?:q|query|destination)=([^&]+)/);
+    if (m) {
+      try {
+        const decoded = decodeURIComponent(m[1]);
+        const c = readCoords(decoded);
+        if (c) return c;
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  }
+
+  try {
+    const u = new URL(url);
+    const candidates = [
+      u.searchParams.get('q'),
+      u.searchParams.get('query'),
+      u.searchParams.get('destination'),
+      u.searchParams.get('daddr'),
+      u.searchParams.get('ll'),
+    ].filter(Boolean) as string[];
+    for (const c0 of candidates) {
+      const c = readCoords(c0);
+      if (c) {
+        const labelMatch = c0.match(/\(([^)]+)\)/);
+        return { ...c, label: labelMatch?.[1] };
+      }
+    }
+    const pm = u.pathname.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (pm) return { lat: Number(pm[1]), lon: Number(pm[2]) };
+
+    // Custom-scheme intents such as shortcut://17.44,78.37?q=HITEC%20City are
+    // parsed by Expo Router as a route, so read the host part as coordinates.
+    const authority = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').split(/[?#]/)[0];
+    const hostCoords = readCoords(decodeURIComponent(authority));
+    if (hostCoords) {
+      const q = u.searchParams.get('q') ?? u.searchParams.get('query');
+      const label = q && !readCoords(q) ? q : undefined;
+      return { ...hostCoords, label };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}

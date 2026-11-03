@@ -81,12 +81,23 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       setLocationStatus('granted');
-      const lastKnown = await Location.getLastKnownPositionAsync({
-        maxAge: 120_000,
-        requiredAccuracy: 200,
-      });
-      if (lastKnown && active) {
-        const position = toUserPosition(lastKnown);
+      // Prefer a fresh fix over a stale cached one (emulator default = Mountain View).
+      let positionSource: Location.LocationObject | null = null;
+      try {
+        positionSource = await Promise.race<Location.LocationObject>([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<Location.LocationObject>((_, reject) =>
+            setTimeout(() => reject(new Error('location-timeout')), 6000),
+          ),
+        ]);
+      } catch {
+        positionSource = await Location.getLastKnownPositionAsync({
+          maxAge: 120_000,
+          requiredAccuracy: 200,
+        });
+      }
+      if (positionSource && active) {
+        const position = toUserPosition(positionSource);
         setLocation(position);
         setOriginState((current) =>
           current ?? {
@@ -153,14 +164,23 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
       setLocationStatus('granted');
-      const lastKnown = await Location.getLastKnownPositionAsync({
-        maxAge: 60_000,
-        requiredAccuracy: 120,
-      });
-      const current =
-        lastKnown ??
-        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }));
-      const position = toUserPosition(current);
+      // Prefer a fresh GPS fix; fall back to last-known only on failure/timeout.
+      let positionSource: Location.LocationObject | null = null;
+      try {
+        positionSource = await Promise.race<Location.LocationObject>([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+          new Promise<Location.LocationObject>((_, reject) =>
+            setTimeout(() => reject(new Error('location-timeout')), 8000),
+          ),
+        ]);
+      } catch {
+        positionSource = await Location.getLastKnownPositionAsync({
+          maxAge: 60_000,
+          requiredAccuracy: 120,
+        });
+      }
+      if (!positionSource) throw new Error('No location fix available.');
+      const position = toUserPosition(positionSource);
       setLocation(position);
       const place: Place = {
         lat: position.lat,
