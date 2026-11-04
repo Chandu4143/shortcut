@@ -4,13 +4,13 @@ import { Redirect, router } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '../components/Controls';
 import { ManeuverIcon } from '../components/ManeuverIcon';
 import { MapCanvas } from '../components/MapCanvas';
 import { Tap } from '../components/Tap';
-import { cumulativeDistances, pointAtDistance, progressOnRoute } from '../lib/geo';
+import { cumulativeDistances, bearing, pointAtDistance, progressOnRoute } from '../lib/geo';
 import { formatArrival, formatDistance, formatDuration, shortLabel } from '../lib/format';
 import { useTrip } from '../state/TripProvider';
 import { colors, fonts, radius, shadow } from '../theme';
@@ -26,6 +26,7 @@ export default function NavigateScreen() {
     routes,
     destination,
     mode,
+    activeRoute,
     location,
     locationStatus,
     voiceEnabled,
@@ -35,7 +36,7 @@ export default function NavigateScreen() {
     stopTracking,
   } = useTrip();
 
-  const route = routes?.shortest;
+  const route = routes?.[activeRoute] ?? routes?.shortest;
   const [simActive, setSimActive] = useState(false);
   const [simPlaying, setSimPlaying] = useState(false);
   const [simDistance, setSimDistance] = useState(0);
@@ -79,6 +80,25 @@ export default function NavigateScreen() {
   const etaSeconds = progress?.etaSeconds ?? route?.durationSeconds ?? 0;
   const fraction = progress?.fraction ?? 0;
   const nextManeuver = progress?.nextManeuver ?? route?.maneuvers[0] ?? null;
+
+  const guidanceBearing = useMemo(() => {
+    if (!position) return null;
+    const gpsSpeed = location?.speed ?? 0;
+    if (
+      position.heading != null &&
+      Number.isFinite(position.heading) &&
+      (simActive || gpsSpeed > 1.2)
+    ) {
+      return position.heading;
+    }
+    // A stationary GPS heading is usually 0 (north). Face the route instead.
+    if (progress) return progress.bearing;
+    if (!nextManeuver) return null;
+    return bearing(
+      { lat: position.lat, lon: position.lon },
+      { lat: nextManeuver.location[0], lon: nextManeuver.location[1] },
+    );
+  }, [location?.speed, nextManeuver, position, progress, simActive]);
 
   useEffect(() => {
     void startTracking();
@@ -168,7 +188,7 @@ export default function NavigateScreen() {
   }, [
     arrived,
     position,
-    progress?.distanceFromRoute,
+    progress,
     recalculateFrom,
     simActive,
     voiceEnabled,
@@ -179,6 +199,13 @@ export default function NavigateScreen() {
     stopTracking();
     router.replace('/');
   }, [stopTracking]);
+
+  const confirmEndTrip = useCallback(() => {
+    Alert.alert('End navigation?', 'Your route will be closed and the map stays where it is.', [
+      { text: 'Keep going', style: 'cancel' },
+      { text: 'End', style: 'destructive', onPress: endTrip },
+    ]);
+  }, [endTrip]);
 
   const toggleVoice = () => {
     const next = !voiceEnabled;
@@ -213,7 +240,31 @@ export default function NavigateScreen() {
     (route.distanceMeters / Math.max(1, route.durationSeconds)) * 3.6,
   );
   const accuracy = location?.accuracy ? `±${Math.round(location.accuracy)} m` : null;
+  const liveSpeed =
+    location?.speed != null && location.speed >= 0.5 ? Math.round(location.speed * 3.6) : null;
+  const speedLabel = simActive
+    ? 'Preview'
+    : liveSpeed != null
+      ? `${liveSpeed} km/h`
+      : accuracy
+        ? `GPS ${accuracy}`
+        : `${speedKph} km/h avg`;
   const modeLabel = mode === 'riding' ? 'Riding' : 'Walking';
+  const nextNextManeuver = (() => {
+    if (!progress?.nextManeuver) return null;
+    const index = route.maneuvers.findIndex(
+      (maneuver) => maneuver.key === progress.nextManeuver?.key,
+    );
+    return index >= 0 ? route.maneuvers[index + 1] ?? null : null;
+  })();
+  const nextInstruction = nextManeuver?.instruction ?? 'Follow the route';
+  const rawDetail = nextManeuver?.detail?.trim();
+  const nextDetail =
+    rawDetail &&
+    rawDetail.replace(/[.\s]/g, '').toLowerCase() !==
+      nextInstruction.replace(/[.\s]/g, '').toLowerCase()
+      ? rawDetail
+      : null;
 
   return (
     <View style={styles.root}>
@@ -222,13 +273,14 @@ export default function NavigateScreen() {
         origin={null}
         destination={destination}
         routes={routes}
+        activeRoute={activeRoute}
         mode="navigate"
         userLocation={
           position
             ? {
                 lat: position.lat,
                 lon: position.lon,
-                heading: position.heading ?? null,
+                heading: guidanceBearing,
               }
             : null
         }
@@ -261,7 +313,7 @@ export default function NavigateScreen() {
               variant="dark"
               size={40}
               iconSize={18}
-              onPress={endTrip}
+              onPress={confirmEndTrip}
             />
           </View>
         </View>
@@ -275,7 +327,8 @@ export default function NavigateScreen() {
               <Text style={styles.maneuverKicker}>Journey complete</Text>
               <Text style={styles.maneuverTitle}>You&apos;ve arrived</Text>
               <Text style={styles.maneuverDetail} numberOfLines={2}>
-                {formatDistance(route.distanceMeters)} covered on the shortest route
+                {formatDistance(route.distanceMeters)} covered on the{' '}
+                {activeRoute === 'fastest' ? 'fastest' : 'shortest'} route
                 {destination ? ` to ${shortLabel(destination.label, 1)}` : ''}.
               </Text>
             </View>
@@ -301,11 +354,19 @@ export default function NavigateScreen() {
                 </Text>
               </View>
               <Text style={styles.maneuverTitle} numberOfLines={1}>
-                {nextManeuver?.instruction ?? 'Follow the route'}
+                {nextInstruction}
               </Text>
               <Text style={styles.maneuverDetail} numberOfLines={2}>
-                {nextManeuver?.detail ?? destination?.label ?? 'Continue on the highlighted route'}
+                {nextDetail ?? destination?.label ?? 'Continue on the highlighted route'}
               </Text>
+              {nextNextManeuver && nextNextManeuver.type !== 'arrive' ? (
+                <View style={styles.thenRow}>
+                  <Text style={styles.thenLabel}>Then</Text>
+                  <Text style={styles.thenText} numberOfLines={1}>
+                    {nextNextManeuver.instruction}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
         ) : (
@@ -361,9 +422,7 @@ export default function NavigateScreen() {
           <View style={styles.statsColumn}>
             <View style={styles.statRow}>
               <Ionicons name="speedometer-outline" size={12} color="rgba(240,242,233,0.5)" />
-              <Text style={styles.statText}>
-                {simActive ? 'Preview' : accuracy ?? `${speedKph} km/h`}
-              </Text>
+              <Text style={styles.statText}>{speedLabel}</Text>
             </View>
             <View style={styles.statRow}>
               <Ionicons name="git-commit-outline" size={12} color="rgba(240,242,233,0.5)" />
@@ -389,7 +448,9 @@ export default function NavigateScreen() {
                 style={styles.previewButton}
                 onPress={togglePreview}
                 haptic="light"
-                accessibilityLabel={simActive ? 'Pause route preview' : 'Preview the drive'}
+                accessibilityLabel={
+                  simActive ? 'Pause route preview' : `Preview the ${mode === 'riding' ? 'ride' : 'walk'}`
+                }
               >
                 <Ionicons
                   name={simActive && simPlaying ? 'pause' : 'play'}
@@ -397,7 +458,11 @@ export default function NavigateScreen() {
                   color={colors.paper}
                 />
                 <Text style={styles.previewText}>
-                  {simActive ? (simPlaying ? 'Pause preview' : 'Resume preview') : 'Preview drive'}
+                  {simActive
+                    ? simPlaying
+                      ? 'Pause preview'
+                      : 'Resume preview'
+                    : `Preview ${mode === 'riding' ? 'ride' : 'walk'}`}
                 </Text>
               </Tap>
               {simActive ? (
@@ -426,7 +491,7 @@ export default function NavigateScreen() {
               ) : null}
               <Tap
                 style={styles.endButton}
-                onPress={endTrip}
+                onPress={confirmEndTrip}
                 haptic="medium"
                 accessibilityLabel="End navigation"
               >
@@ -471,7 +536,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.mintBright,
   },
   navChipText: {
     fontFamily: fonts.bold,
@@ -483,7 +548,7 @@ const styles = StyleSheet.create({
   navChipMode: {
     fontFamily: fonts.medium,
     fontSize: 9.5,
-    color: 'rgba(240,242,233,0.5)',
+    color: 'rgba(240,242,233,0.64)',
   },
   navActions: {
     flexDirection: 'row',
@@ -518,7 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.mint,
+    backgroundColor: colors.mintBright,
   },
   waitingIcon: {
     width: 62,
@@ -543,7 +608,7 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
-    color: 'rgba(240,242,233,0.45)',
+    color: 'rgba(240,242,233,0.62)',
   },
   maneuverDistance: {
     fontFamily: fonts.bold,
@@ -561,7 +626,26 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 10.5,
     lineHeight: 14,
-    color: 'rgba(240,242,233,0.55)',
+    color: 'rgba(240,242,233,0.68)',
+  },
+  thenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  thenLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 8,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: 'rgba(240,242,233,0.6)',
+  },
+  thenText: {
+    flex: 1,
+    fontFamily: fonts.medium,
+    fontSize: 10,
+    color: 'rgba(240,242,233,0.82)',
   },
   statusBanner: {
     flexDirection: 'row',
@@ -607,7 +691,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 2,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.mintBright,
   },
   remainingRow: {
     flexDirection: 'row',
@@ -622,7 +706,7 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
-    color: 'rgba(240,242,233,0.45)',
+    color: 'rgba(240,242,233,0.62)',
   },
   remainingValue: {
     marginTop: 1,
@@ -635,7 +719,7 @@ const styles = StyleSheet.create({
   remainingMeta: {
     fontFamily: fonts.medium,
     fontSize: 10.5,
-    color: 'rgba(240,242,233,0.55)',
+    color: 'rgba(240,242,233,0.68)',
   },
   statsColumn: {
     alignItems: 'flex-end',
@@ -650,7 +734,7 @@ const styles = StyleSheet.create({
   statText: {
     fontFamily: fonts.medium,
     fontSize: 9.5,
-    color: 'rgba(240,242,233,0.6)',
+    color: 'rgba(240,242,233,0.72)',
   },
   actionRow: {
     flexDirection: 'row',
@@ -708,7 +792,7 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     borderRadius: radius.md,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.mintBright,
   },
   doneText: {
     fontFamily: fonts.bold,

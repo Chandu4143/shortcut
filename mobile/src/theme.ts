@@ -1,31 +1,37 @@
 import { Platform } from 'react-native';
 
+/**
+ * Short Cut's palette is a paper map on a table: sage paper, ink type, white
+ * streets and one coral line for the route. Colors are tuned so that every
+ * text pair used in the app clears WCAG AA at its rendered size.
+ */
 export const colors = {
-  ink: '#172B28',
-  inkSoft: '#2B403B',
-  paper: '#F0F2E9',
-  paperDeep: '#E7EBDF',
-  surface: '#FAFBF5',
-  surfaceAlt: '#EDF0E6',
-  coral: '#E45537',
-  coralDeep: '#C74327',
-  coralSoft: '#FBE8E2',
-  teal: '#2B6968',
-  tealSoft: '#E1EEEA',
-  mint: '#2FAF7A',
+  ink: '#132622',
+  inkSoft: '#2A3F39',
+  paper: '#F2F3EA',
+  paperDeep: '#E8EBDD',
+  surface: '#FCFCF6',
+  surfaceAlt: '#EBEEE3',
+  coral: '#D9482A',
+  coralDeep: '#B4371E',
+  coralSoft: '#FBE6DF',
+  teal: '#24625F',
+  tealSoft: '#DFEDE8',
+  mint: '#1F8A5E',
+  mintBright: '#2FAF7A',
   mintSoft: '#DDF3E7',
-  amber: '#E39A24',
+  amber: '#A96A10',
   amberSoft: '#FBF0DA',
-  slate: '#657D87',
-  muted: '#6D7D77',
-  mutedLight: '#93A09A',
-  line: '#DCE2D4',
-  lineStrong: '#C9D2C3',
+  slate: '#5C737C',
+  muted: '#596B64',
+  mutedLight: '#7C8A84',
+  line: '#D8DFCF',
+  lineStrong: '#C3CDBB',
   white: '#FFFFFF',
-  danger: '#B3452F',
+  danger: '#A93F2B',
   navInk: '#12211F',
   navInkSoft: '#1C302C',
-  overlay: 'rgba(23, 43, 40, 0.42)',
+  overlay: 'rgba(19, 38, 34, 0.42)',
 } as const;
 
 export const fonts = {
@@ -44,6 +50,15 @@ export const radius = {
   lg: 20,
   xl: 26,
   pill: 999,
+} as const;
+
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
 } as const;
 
 export const shadow = {
@@ -83,7 +98,7 @@ export const type = {
   kicker: {
     fontFamily: fonts.bold,
     fontSize: 10,
-    letterSpacing: 1.6,
+    letterSpacing: 1.4,
     textTransform: 'uppercase' as const,
   },
   label: {
@@ -100,4 +115,23 @@ export const type = {
     fontSize: 12,
     lineHeight: 17,
   },
-};
+  micro: {
+    fontFamily: fonts.sans,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  title: {
+    fontFamily: fonts.displaySemibold,
+    fontSize: 25,
+    lineHeight: 29,
+    letterSpacing: -1.1,
+    color: '#132622',
+  },
+  hero: {
+    fontFamily: fonts.displayBold,
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -2.4,
+    color: '#132622',
+  },
+} as const;

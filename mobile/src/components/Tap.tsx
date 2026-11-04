@@ -57,7 +57,7 @@ export function Tap({
       }}
       onPressIn={() => spring(0.97)}
       onPressOut={() => spring(1)}
-      style={[style, { transform: [{ scale }], opacity: disabled ? 0.55 : 1 }]}
+      style={[style, { transform: [{ scale }], opacity: disabled ? 0.7 : 1 }]}
     >
       {children}
     </AnimatedPressable>

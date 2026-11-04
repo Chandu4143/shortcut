@@ -17,12 +17,13 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radius } from '../theme';
+import { Animated, Linking, StyleSheet, Text, View } from 'react-native';
+import { colors, fonts, radius, shadow } from '../theme';
 import { routeBounds, toLngLat } from '../lib/geo';
 import type { LatLng, Place, RoutePair, UserPosition } from '../types';
 import lightStyleJson from '../map/style.json';
 import darkStyleJson from '../map/style-dark.json';
+import { Tap } from './Tap';
 
 const LIGHT_STYLE = lightStyleJson as unknown as StyleSpecification;
 const DARK_STYLE = darkStyleJson as unknown as StyleSpecification;
@@ -38,6 +39,7 @@ interface MapCanvasProps {
   origin: Place | null;
   destination: Place | null;
   routes: RoutePair | null;
+  activeRoute?: 'shortest' | 'fastest';
   mode: 'plan' | 'results' | 'navigate';
   userLocation?: UserPosition | null;
   follow?: boolean;
@@ -48,6 +50,7 @@ interface MapCanvasProps {
   topPadding?: number;
   bottomPadding?: number;
   showLabels?: boolean;
+  showAttribution?: boolean;
 }
 
 function lineFeature(coordinates: LatLng[]) {
@@ -66,6 +69,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
     origin,
     destination,
     routes,
+    activeRoute = 'shortest',
     mode,
     userLocation,
     follow = true,
@@ -76,27 +80,34 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
     topPadding = 160,
     bottomPadding = 380,
     showLabels = false,
+    showAttribution = true,
   },
   ref,
 ) {
   const cameraRef = useRef<CameraRef>(null);
   const [mapReady, setMapReady] = useState(false);
 
-  const shortestFeature = useMemo(
-    () => (routes ? lineFeature(routes.shortest.coordinates) : null),
-    [routes],
-  );
-  const fastestFeature = useMemo(() => {
-    if (!routes) return null;
-    const sameCoordinates =
+  const routesShareLine = useMemo(() => {
+    if (!routes) return false;
+    return (
       routes.shortest.coordinates.length === routes.fastest.coordinates.length &&
       routes.shortest.coordinates.every(
         (point, index) =>
           Math.abs(point[0] - routes.fastest.coordinates[index][0]) < 0.000001 &&
           Math.abs(point[1] - routes.fastest.coordinates[index][1]) < 0.000001,
-      );
-    return sameCoordinates ? null : lineFeature(routes.fastest.coordinates);
+      )
+    );
   }, [routes]);
+
+  const primaryFeature = useMemo(() => {
+    if (!routes) return null;
+    return lineFeature(activeRoute === 'fastest' ? routes.fastest.coordinates : routes.shortest.coordinates);
+  }, [activeRoute, routes]);
+
+  const alternateFeature = useMemo(() => {
+    if (!routes || routesShareLine) return null;
+    return lineFeature(activeRoute === 'fastest' ? routes.shortest.coordinates : routes.fastest.coordinates);
+  }, [activeRoute, routes, routesShareLine]);
 
   const fitRoutes = useCallback(
     (animated = true) => {
@@ -107,7 +118,9 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         left: 26,
         right: 26,
       };
-      const coordinates = routes?.shortest.coordinates ?? [];
+      const coordinates = routes
+        ? [...routes.shortest.coordinates, ...routes.fastest.coordinates]
+        : [];
       if (coordinates.length > 1) {
         cameraRef.current.fitBounds(routeBounds(coordinates), {
           padding,
@@ -141,17 +154,26 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
     [bottomPadding, destination, origin, routes, topPadding],
   );
 
+  const followUser = useCallback(
+    (animated = true) => {
+      if (!userLocation || !cameraRef.current) return;
+      cameraRef.current.easeTo({
+        center: [userLocation.lon, userLocation.lat],
+        zoom: 16.6,
+        pitch: 48,
+        bearing: userLocation.heading ?? 0,
+        padding: { top: 170, bottom: 290, left: 0, right: 0 },
+        duration: animated ? 900 : 0,
+      });
+    },
+    [userLocation],
+  );
+
   useImperativeHandle(ref, () => ({
     fitRoutes: () => fitRoutes(true),
     recenter: () => {
-      if (mode === 'navigate' && userLocation && cameraRef.current) {
-        cameraRef.current.easeTo({
-          center: [userLocation.lon, userLocation.lat],
-          zoom: 17.2,
-          pitch: 52,
-          bearing: userLocation.heading ?? 0,
-          duration: 900,
-        });
+      if (mode === 'navigate' && userLocation) {
+        followUser(true);
         return;
       }
       fitRoutes(true);
@@ -170,14 +192,8 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
   useEffect(() => {
     if (!mapReady) return;
     if (mode === 'navigate') {
-      if (userLocation && follow && cameraRef.current) {
-        cameraRef.current.easeTo({
-          center: [userLocation.lon, userLocation.lat],
-          zoom: 17.2,
-          pitch: 52,
-          bearing: userLocation.heading ?? 0,
-          duration: 900,
-        });
+      if (userLocation && follow) {
+        followUser(true);
       } else if (!userLocation && routes && cameraRef.current) {
         cameraRef.current.fitBounds(routeBounds(routes.shortest.coordinates), {
           padding: { top: 190, bottom: 300, left: 32, right: 32 },
@@ -191,16 +207,12 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
   }, [mapReady, mode, routes, origin, destination, fitRoutes]);
 
   useEffect(() => {
-    if (!mapReady || mode !== 'navigate' || !follow || !userLocation || !cameraRef.current) {
+    if (!mapReady || mode !== 'navigate' || !follow || !userLocation) {
       return;
     }
-    cameraRef.current.easeTo({
-      center: [userLocation.lon, userLocation.lat],
-      zoom: 17.2,
-      pitch: 52,
-      bearing: userLocation.heading ?? 0,
-      duration: 900,
-    });
+    followUser(true);
+    // Follow only when the fix or bearing changes, not on every parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [follow, mapReady, mode, userLocation?.heading, userLocation?.lat, userLocation?.lon]);
 
   const handlePress = useCallback(
@@ -223,22 +235,23 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
   const alternativeColor = dark ? 'rgba(154, 176, 168, 0.75)' : 'rgba(90, 112, 118, 0.72)';
 
   return (
-    <Map
-      mapStyle={dark ? DARK_STYLE : LIGHT_STYLE}
-      style={StyleSheet.absoluteFill}
-      logo={false}
-      attribution={false}
-      compass={false}
-      scaleBar={false}
-      androidView="texture"
-      onDidFinishLoadingMap={() => setMapReady(true)}
-      onDidFailLoadingMap={() => setMapReady(true)}
-      onWillStartLoadingMap={() => setMapReady(false)}
-      onPress={handlePress}
-      onRegionWillChange={(event) => {
-        if (event.nativeEvent?.userInteraction) onUserPan?.();
-      }}
-    >
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Map
+        mapStyle={dark ? DARK_STYLE : LIGHT_STYLE}
+        style={StyleSheet.absoluteFill}
+        logo={false}
+        attribution={false}
+        compass={false}
+        scaleBar={false}
+        androidView="texture"
+        onDidFinishLoadingMap={() => setMapReady(true)}
+        onDidFailLoadingMap={() => setMapReady(true)}
+        onWillStartLoadingMap={() => setMapReady(false)}
+        onPress={handlePress}
+        onRegionWillChange={(event) => {
+          if (event.nativeEvent?.userInteraction) onUserPan?.();
+        }}
+      >
       <Camera
         ref={cameraRef}
         initialViewState={{ center: HYDERABAD, zoom: 12.2 }}
@@ -246,10 +259,10 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         maxZoom={19}
       />
 
-      {fastestFeature && shortestFeature ? (
-        <GeoJSONSource id="fastest-route" data={fastestFeature}>
+      {alternateFeature ? (
+        <GeoJSONSource id="alternate-route" data={alternateFeature}>
           <Layer
-            id="fastest-route-line"
+            id="alternate-route-line"
             type="line"
             layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             paint={{
@@ -262,11 +275,11 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         </GeoJSONSource>
       ) : null}
 
-      {shortestFeature ? (
+      {primaryFeature ? (
         <>
-          <GeoJSONSource id="shortest-glow" data={shortestFeature}>
+          <GeoJSONSource id="active-glow" data={primaryFeature}>
             <Layer
-              id="shortest-glow-line"
+              id="active-glow-line"
               type="line"
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
               paint={{
@@ -277,9 +290,9 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
               }}
             />
           </GeoJSONSource>
-          <GeoJSONSource id="shortest-casing" data={shortestFeature}>
+          <GeoJSONSource id="active-casing" data={primaryFeature}>
             <Layer
-              id="shortest-casing-line"
+              id="active-casing-line"
               type="line"
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
               paint={{
@@ -289,9 +302,9 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
               }}
             />
           </GeoJSONSource>
-          <GeoJSONSource id="shortest-route" data={shortestFeature}>
+          <GeoJSONSource id="active-route" data={primaryFeature}>
             <Layer
-              id="shortest-route-line"
+              id="active-route-line"
               type="line"
               layout={{ 'line-cap': 'round', 'line-join': 'round' }}
               paint={{
@@ -304,7 +317,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         </>
       ) : null}
 
-      {origin && mode !== 'navigate' ? (
+      {origin && mode !== 'navigate' && !(origin.kind === 'gps' && userLocation) ? (
         <Marker lngLat={toLngLat([origin.lat, origin.lon])} anchor="bottom">
           <View style={styles.startMarkerWrap}>
             {showLabels ? (
@@ -332,7 +345,9 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
               </View>
             ) : null}
             <View style={styles.endMarker}>
-              <View style={styles.endMarkerCore} />
+              <View style={styles.endMarkerCore}>
+                <Ionicons name="flag" size={12} color={colors.white} />
+              </View>
             </View>
           </View>
         </Marker>
@@ -343,7 +358,28 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
           <UserDot navigating={mode === 'navigate'} />
         </Marker>
       ) : null}
-    </Map>
+      </Map>
+
+      {showAttribution ? (
+        <Tap
+          style={[
+            styles.attribution,
+            dark && styles.attributionDark,
+            { bottom: Math.max(12, bottomPadding - 20) },
+          ]}
+          haptic="none"
+          accessibilityRole="link"
+          accessibilityLabel="Map data from OpenStreetMap and OpenFreeMap"
+          onPress={() => {
+            void Linking.openURL('https://www.openstreetmap.org/copyright');
+          }}
+        >
+          <Text style={[styles.attributionText, dark && styles.attributionTextDark]}>
+            © OpenStreetMap · OpenFreeMap
+          </Text>
+        </Tap>
+      ) : null}
+    </View>
   );
 });
 
@@ -505,5 +541,29 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 6,
+  },
+  attribution: {
+    position: 'absolute',
+    left: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(252,252,246,0.82)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(19,38,34,0.1)',
+    ...shadow.tiny,
+  },
+  attributionDark: {
+    backgroundColor: 'rgba(18,33,31,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  attributionText: {
+    fontFamily: fonts.medium,
+    fontSize: 9.5,
+    letterSpacing: 0.1,
+    color: colors.muted,
+  },
+  attributionTextDark: {
+    color: 'rgba(242,243,234,0.62)',
   },
 });

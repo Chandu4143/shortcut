@@ -19,9 +19,9 @@ Tap the button and the APK downloads straight from this repository's releases. N
 
 | Build | Size | Use for |
 |---|---:|---|
-| [`ShortCut-1.0.0-arm64-v8a.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk) | 40.8 MB | Every Android phone from roughly 2017 onward. Start here. |
-| [`ShortCut-1.0.0-armeabi-v7a.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-armeabi-v7a.apk) | 32.1 MB | Older 32-bit phones, if the arm64 build says “App not installed”. |
-| [`ShortCut-1.0.0-x86_64.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-x86_64.apk) | 41.9 MB | Emulators and Intel test devices. |
+| [`ShortCut-1.0.0-arm64-v8a.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk) | 41.0 MB | Every Android phone from roughly 2017 onward. Start here. |
+| [`ShortCut-1.0.0-armeabi-v7a.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-armeabi-v7a.apk) | 32.2 MB | Older 32-bit phones, if the arm64 build says “App not installed”. |
+| [`ShortCut-1.0.0-x86_64.apk`](https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-x86_64.apk) | 42.0 MB | Emulators and Intel test devices. |
 
 Every asset lives on the [releases page](https://github.com/Chandu4143/shortcut/releases). Requires Android 7.0
 (API 24) or newer and an internet connection for map tiles, place search and routing.

@@ -112,8 +112,15 @@ export const PRESET_PLACES: PresetPlace[] = [
 ];
 
 export function presetToPlace(preset: PresetPlace): Place {
+  const label = [
+    preset.name,
+    preset.area && preset.area.toLowerCase() !== preset.name.toLowerCase() ? preset.area : null,
+    'Hyderabad',
+  ]
+    .filter(Boolean)
+    .join(', ');
   return {
-    label: `${preset.name}, ${preset.area}, Hyderabad`,
+    label,
     lat: preset.lat,
     lon: preset.lon,
     kind: 'preset',

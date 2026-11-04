@@ -1,18 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEMO_DESTINATIONS, presetToPlace } from '../data/places';
 import { shortLabel } from '../lib/format';
 import { colors, fonts, radius, shadow } from '../theme';
 import type { Place, TravelMode } from '../types';
+import type { SavedPlaces } from '../lib/storage';
 import { Divider, Kicker, ModeSwitch } from './Controls';
 import { Sheet } from './Sheet';
 import { Tap } from './Tap';
@@ -30,7 +24,14 @@ interface PlannerSheetProps {
   onModeChange: (mode: TravelMode) => void;
   onFind: () => void;
   onQuickDestination: (place: Place) => void;
+  onSwap: () => void;
   recents?: Place[];
+  savedPlaces: SavedPlaces;
+}
+
+function placeTitle(place: Place) {
+  const first = place.label.split(',')[0]?.trim() ?? place.label;
+  return first.length > 22 ? first : shortLabel(place.label, 2);
 }
 
 export function PlannerSheet({
@@ -46,202 +47,212 @@ export function PlannerSheet({
   onModeChange,
   onFind,
   onQuickDestination,
+  onSwap,
   recents = [],
+  savedPlaces,
 }: PlannerSheetProps) {
   const insets = useSafeAreaInsets();
   const loading = status === 'loading';
+  const hasMessage = status === 'error' || loading;
+
+  const savedChips = [
+    savedPlaces.home ? { key: 'home', label: 'Home', icon: 'home' as const, place: savedPlaces.home } : null,
+    savedPlaces.work ? { key: 'work', label: 'Work', icon: 'briefcase' as const, place: savedPlaces.work } : null,
+  ].filter(Boolean) as { key: string; label: string; icon: 'home' | 'briefcase'; place: Place }[];
+
+  const recentChips = recents
+    .filter((place) => !savedChips.some((chip) => chip.place.label === place.label))
+    .slice(0, 3)
+    .map((place, index) => ({ key: `recent-${index}`, place }));
+
+  const firstRun = !savedChips.length && !recentChips.length;
 
   return (
-    <Sheet style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scroll}
-      >
-        <View style={styles.headerRow}>
-          <Kicker>Distance-first navigation</Kicker>
-          <View style={styles.coverage}>
-            <View style={styles.coverageDot} />
-            <Text style={styles.coverageText}>Hyderabad pilot</Text>
-          </View>
+    <Sheet style={[styles.sheet, { paddingBottom: insets.bottom + 10 }]}>
+      <View style={styles.headerRow}>
+        <Kicker>Plan a ride</Kicker>
+        <View style={styles.coverage}>
+          <View style={styles.coverageDot} />
+          <Text style={styles.coverageText}>Hyderabad</Text>
         </View>
+      </View>
 
-        <Text style={styles.headline}>
-          Take the{'\n'}
-          <Text style={styles.headlineAccent}>shorter street.</Text>
-        </Text>
-        <Text style={styles.subtitle}>
-          Find the least distance through streets you can actually use.
-        </Text>
-
-        <View style={styles.fieldCard}>
+      <View style={styles.fieldCard}>
+        <View style={styles.originRow}>
           <Tap
-            style={styles.fieldRow}
+            style={styles.originMain}
             onPress={onOriginPress}
-            accessibilityLabel={`Starting point: ${origin ? shortLabel(origin.label) : 'not set'}`}
+            haptic="light"
+            accessibilityLabel={`Starting point: ${origin ? placeTitle(origin) : 'not set'}`}
           >
-            <View style={[styles.fieldIcon, styles.fieldIconStart]}>
-              <View style={styles.startDot} />
+            <View style={styles.originDotWrap}>
+              <View style={styles.originDot} />
             </View>
             <View style={styles.fieldCopy}>
               <Text style={styles.fieldLabel}>FROM</Text>
-              <Text
-                style={[styles.fieldValue, !origin && styles.fieldPlaceholder]}
-                numberOfLines={1}
-              >
-                {origin ? shortLabel(origin.label, 2) : 'Choose a starting point'}
+              <Text style={[styles.originValue, !origin && styles.placeholder]} numberOfLines={1}>
+                {origin ? placeTitle(origin) : 'Choose a starting point'}
               </Text>
             </View>
-            <Tap
-              style={styles.locateButton}
-              onPress={onLocate}
-              disabled={locating}
-              accessibilityLabel="Use my current location"
-              haptic="light"
-            >
-              {locating ? (
-                <ActivityIndicator size="small" color={colors.teal} />
-              ) : (
-                <Ionicons name="locate" size={18} color={colors.teal} />
-              )}
-            </Tap>
           </Tap>
-          <Divider style={styles.fieldDivider} />
           <Tap
-            style={styles.fieldRow}
-            onPress={onDestinationPress}
-            accessibilityLabel={`Destination: ${destination ? shortLabel(destination.label) : 'not set'}`}
+            style={styles.iconButton}
+            onPress={onLocate}
+            disabled={locating}
+            haptic="light"
+            accessibilityLabel="Use my current location"
           >
-            <View style={[styles.fieldIcon, styles.fieldIconEnd]}>
-              <Ionicons name="location" size={16} color={colors.coral} />
-            </View>
-            <View style={styles.fieldCopy}>
-              <Text style={styles.fieldLabel}>TO</Text>
-              <Text
-                style={[styles.fieldValue, !destination && styles.fieldPlaceholder]}
-                numberOfLines={1}
-              >
-                {destination ? shortLabel(destination.label, 2) : 'Where do you want to go?'}
-              </Text>
-            </View>
-            <View style={styles.chevron}>
-              <Ionicons name="chevron-forward" size={17} color={colors.mutedLight} />
-            </View>
+            {locating ? (
+              <ActivityIndicator size="small" color={colors.teal} />
+            ) : (
+              <Ionicons name="locate" size={17} color={colors.teal} />
+            )}
+          </Tap>
+          <Tap
+            style={styles.iconButton}
+            onPress={onSwap}
+            disabled={!origin && !destination}
+            haptic="light"
+            accessibilityLabel="Swap starting point and destination"
+          >
+            <Ionicons name="swap-vertical" size={17} color={colors.muted} />
           </Tap>
         </View>
 
-        <View style={styles.modeRow}>
-          <Kicker color={colors.muted}>Travel mode</Kicker>
-          <ModeSwitch value={mode} onChange={onModeChange} />
-        </View>
+        <Divider style={styles.fieldDivider} />
 
-        <Tap style={styles.cta} onPress={onFind} disabled={loading} haptic="medium" accessibilityLabel="Find shortest route">
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Ionicons name="navigate" size={17} color={colors.white} />
-          )}
-          <Text style={styles.ctaText}>{loading ? 'Finding the shorter way' : 'Find shortest route'}</Text>
-          {!loading ? (
-            <View style={styles.ctaArrow}>
-              <Ionicons name="arrow-forward" size={16} color={colors.coral} />
-            </View>
-          ) : null}
+        <Tap
+          style={styles.destinationRow}
+          onPress={onDestinationPress}
+          haptic="light"
+          accessibilityLabel={`Destination: ${destination ? placeTitle(destination) : 'not set'}`}
+        >
+          <View style={styles.destinationIcon}>
+            <Ionicons name="flag" size={15} color={colors.coral} />
+          </View>
+          <View style={styles.fieldCopy}>
+            <Text style={styles.fieldLabel}>TO</Text>
+            <Text style={[styles.destinationValue, !destination && styles.placeholder]} numberOfLines={1}>
+              {destination ? placeTitle(destination) : 'Where do you want to go?'}
+            </Text>
+          </View>
+          <View style={styles.searchAffordance}>
+            <Ionicons name="search" size={16} color={colors.muted} />
+          </View>
         </Tap>
+      </View>
 
+      <View style={styles.modeRow}>
+        <Text style={styles.modeLabel}>Travel mode</Text>
+        <ModeSwitch value={mode} onChange={onModeChange} />
+      </View>
+
+      <Tap
+        style={[styles.cta, loading && styles.ctaLoading]}
+        onPress={onFind}
+        disabled={loading}
+        haptic="medium"
+        accessibilityLabel="Find the shortest route"
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.white} />
+        ) : (
+          <Ionicons name="navigate" size={17} color={colors.white} />
+        )}
+        <Text style={styles.ctaText}>{loading ? 'Finding the shorter way…' : 'Find shortest route'}</Text>
+        {!loading ? <Ionicons name="arrow-forward" size={17} color="rgba(255,255,255,0.82)" /> : null}
+      </Tap>
+
+      {hasMessage ? (
         <View style={styles.messageRow}>
           <Ionicons
-            name={
-              status === 'error'
-                ? 'alert-circle'
-                : status === 'ready'
-                  ? 'checkmark-circle'
-                  : 'information-circle-outline'
-            }
+            name={status === 'error' ? 'alert-circle' : 'information-circle-outline'}
             size={14}
-            color={status === 'error' ? colors.danger : status === 'ready' ? colors.teal : colors.mutedLight}
+            color={status === 'error' ? colors.danger : colors.muted}
           />
-          <Text
-            style={[
-              styles.message,
-              status === 'error' && styles.messageError,
-              status === 'ready' && styles.messageReady,
-            ]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.message, status === 'error' && styles.messageError]} numberOfLines={2}>
             {message}
           </Text>
         </View>
+      ) : null}
 
-        {recents.length ? (
-          <>
-            <View style={styles.quickHeader}>
-              <Kicker color={colors.muted}>Recent</Kicker>
-              <View style={styles.quickRule} />
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.quickScroller}
-            >
-              {recents.map((place, index) => (
-                <Tap
-                  key={`${place.label}-${index}`}
-                  style={styles.quickChip}
-                  onPress={() => onQuickDestination(place)}
-                  accessibilityLabel={`Route to ${shortLabel(place.label, 1)}`}
-                >
-                  <View style={[styles.quickPin, styles.recentPin]}>
-                    <Ionicons name="time" size={12} color={colors.teal} />
-                  </View>
-                  <Text style={styles.quickText} numberOfLines={1}>
-                    {shortLabel(place.label, 1)}
-                  </Text>
-                </Tap>
-              ))}
-            </ScrollView>
-          </>
-        ) : null}
-
-        <View style={styles.quickHeader}>
-          <Kicker color={colors.muted}>Quick destinations</Kicker>
-          <View style={styles.quickRule} />
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickScroller}
-        >
-          {DEMO_DESTINATIONS.map((preset) => (
-            <Tap
-              key={preset.id}
-              style={styles.quickChip}
-              onPress={() => onQuickDestination(presetToPlace(preset))}
-              accessibilityLabel={`Route to ${preset.name}`}
-            >
-              <View style={styles.quickPin}>
-                <Ionicons name="arrow-up" size={11} color={colors.coral} style={styles.quickPinIcon} />
-              </View>
-              <Text style={styles.quickText}>{preset.name}</Text>
-            </Tap>
-          ))}
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <View style={styles.footerLeft}>
-            <View style={styles.footerDot} />
-            <Text style={styles.footerText}>Mapped roads · no live traffic</Text>
-          </View>
-          <Tap
-            haptic="none"
-            onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
-            accessibilityLabel="Open map data attribution"
+      {firstRun ? (
+        <View style={styles.chipSection}>
+          <Text style={styles.chipHeading}>Try a destination</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipScroller}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.footerLink}>Data & attribution</Text>
-          </Tap>
+            {DEMO_DESTINATIONS.slice(0, 4).map((preset) => {
+              const place = presetToPlace(preset);
+              return (
+                <Tap
+                  key={preset.id}
+                  style={styles.chip}
+                  onPress={() => onQuickDestination(place)}
+                  haptic="light"
+                  accessibilityLabel={`Route to ${preset.name}`}
+                >
+                  <Ionicons name="arrow-up" size={11} color={colors.coral} style={styles.chipArrow} />
+                  <Text style={styles.chipText}>{preset.name}</Text>
+                </Tap>
+              );
+            })}
+          </ScrollView>
         </View>
-      </ScrollView>
+      ) : (
+        <View style={styles.chipSection}>
+          <Text style={styles.chipHeading}>{savedChips.length ? 'Saved and recent' : 'Recent'}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipScroller}
+            keyboardShouldPersistTaps="handled"
+          >
+            {savedChips.map((chip) => (
+              <Tap
+                key={chip.key}
+                style={[styles.chip, styles.chipSaved]}
+                onPress={() => onQuickDestination(chip.place)}
+                haptic="light"
+                accessibilityLabel={`Route to ${chip.label}, ${placeTitle(chip.place)}`}
+              >
+                <Ionicons name={chip.icon} size={12} color={colors.teal} />
+                <Text style={styles.chipText}>{chip.label}</Text>
+              </Tap>
+            ))}
+            {recentChips.map(({ key, place }) => (
+              <Tap
+                key={key}
+                style={styles.chip}
+                onPress={() => onQuickDestination(place)}
+                haptic="light"
+                accessibilityLabel={`Route to ${placeTitle(place)}`}
+              >
+                <Ionicons name="time-outline" size={12} color={colors.muted} />
+                <Text style={styles.chipText} numberOfLines={1}>
+                  {shortLabel(place.label, 1)}
+                </Text>
+              </Tap>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <View style={styles.footer}>
+        <View style={styles.footerDot} />
+        <Text style={styles.footerText}>Mapped roads · no live traffic</Text>
+        <Tap
+          haptic="none"
+          onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
+          accessibilityRole="link"
+          accessibilityLabel="Open map data attribution"
+        >
+          <Text style={styles.footerLink}>© OpenStreetMap</Text>
+        </Tap>
+      </View>
     </Sheet>
   );
 }
@@ -252,54 +263,29 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    maxHeight: '76%',
-  },
-  scroll: {
-    paddingBottom: 2,
-  },
-  scrollView: {
-    flexShrink: 1,
+    maxHeight: '50%',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 1,
+    marginBottom: 12,
   },
   coverage: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   coverageDot: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
     backgroundColor: colors.teal,
   },
   coverageText: {
     fontFamily: fonts.semibold,
     fontSize: 10,
-    color: colors.muted,
-  },
-  headline: {
-    marginTop: 16,
-    fontFamily: fonts.displaySemibold,
-    fontSize: 38,
-    lineHeight: 39,
-    letterSpacing: -2.1,
-    color: colors.ink,
-  },
-  headlineAccent: {
-    color: colors.coral,
-  },
-  subtitle: {
-    marginTop: 9,
-    marginBottom: 18,
-    maxWidth: 300,
-    fontFamily: fonts.sans,
-    fontSize: 12.5,
-    lineHeight: 18,
     color: colors.muted,
   },
   fieldCard: {
@@ -310,67 +296,95 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     ...shadow.tiny,
   },
-  fieldRow: {
+  originRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    minHeight: 60,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 4,
+    minHeight: 48,
+    paddingLeft: 12,
+    paddingRight: 6,
+    paddingVertical: 6,
   },
-  fieldIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 11,
+  originMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    minHeight: 44,
+  },
+  originDotWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fieldIconStart: {
     backgroundColor: colors.tealSoft,
   },
-  fieldIconEnd: {
-    backgroundColor: colors.coralSoft,
-  },
-  startDot: {
-    width: 10,
-    height: 10,
+  originDot: {
+    width: 9,
+    height: 9,
     borderRadius: 5,
-    borderWidth: 2.5,
+    borderWidth: 2.4,
     borderColor: colors.teal,
     backgroundColor: colors.surface,
   },
   fieldCopy: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   fieldLabel: {
     fontFamily: fonts.bold,
     fontSize: 8.5,
     letterSpacing: 1.1,
-    color: colors.mutedLight,
+    color: colors.muted,
   },
-  fieldValue: {
+  originValue: {
     fontFamily: fonts.medium,
-    fontSize: 13.5,
+    fontSize: 14,
     color: colors.ink,
   },
-  fieldPlaceholder: {
-    color: colors.mutedLight,
+  placeholder: {
+    color: colors.muted,
+    fontFamily: fonts.sans,
   },
-  fieldDivider: {
-    marginLeft: 55,
-  },
-  locateButton: {
+  iconButton: {
     width: 36,
     height: 36,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.tealSoft,
+    backgroundColor: colors.surfaceAlt,
   },
-  chevron: {
+  fieldDivider: {
+    marginLeft: 51,
+  },
+  destinationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    minHeight: 60,
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingVertical: 8,
+  },
+  destinationIcon: {
     width: 30,
     height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.coralSoft,
+  },
+  destinationValue: {
+    fontFamily: fonts.semibold,
+    fontSize: 16,
+    letterSpacing: -0.2,
+    color: colors.ink,
+  },
+  searchAffordance: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -378,8 +392,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
-    marginBottom: 14,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  modeLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.muted,
   },
   cta: {
     flexDirection: 'row',
@@ -395,114 +416,89 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
+  ctaLoading: {
+    opacity: 0.9,
+  },
   ctaText: {
     fontFamily: fonts.bold,
     fontSize: 14.5,
-    color: colors.white,
     letterSpacing: -0.1,
-  },
-  ctaArrow: {
-    position: 'absolute',
-    right: 12,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
+    color: colors.white,
   },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 6,
-    minHeight: 32,
     paddingTop: 9,
     paddingHorizontal: 2,
   },
   message: {
     flex: 1,
     fontFamily: fonts.sans,
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 11,
+    lineHeight: 15,
     color: colors.muted,
   },
   messageError: {
     color: colors.danger,
   },
-  messageReady: {
-    color: colors.teal,
+  chipSection: {
+    marginTop: 10,
   },
-  quickHeader: {
+  chipHeading: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.muted,
+    marginBottom: 7,
+  },
+  chipScroller: {
+    gap: 7,
+    paddingRight: 8,
+  },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 8,
-    marginBottom: 9,
-  },
-  quickRule: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.line,
-  },
-  quickScroller: {
-    gap: 7,
-    paddingRight: 12,
-  },
-  quickChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingLeft: 6,
-    paddingRight: 12,
-    paddingVertical: 7,
+    gap: 6,
+    maxWidth: 190,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
     borderRadius: radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
     backgroundColor: colors.surface,
   },
-  quickPin: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.coralSoft,
+  chipSaved: {
+    backgroundColor: colors.tealSoft,
+    borderColor: 'rgba(36,98,95,0.14)',
   },
-  quickPinIcon: {
+  chipArrow: {
     transform: [{ rotate: '45deg' }],
   },
-  recentPin: {
-    backgroundColor: colors.tealSoft,
-  },
-  quickText: {
+  chipText: {
+    flexShrink: 1,
     fontFamily: fonts.semibold,
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.inkSoft,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 6,
+    marginTop: 11,
   },
   footerDot: {
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.mintBright,
   },
   footerText: {
+    flex: 1,
     fontFamily: fonts.sans,
-    fontSize: 9.5,
-    color: colors.mutedLight,
+    fontSize: 10,
+    color: colors.muted,
   },
   footerLink: {
     fontFamily: fonts.medium,

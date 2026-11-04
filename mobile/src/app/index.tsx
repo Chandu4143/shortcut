@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,13 +21,17 @@ export default function HomeScreen() {
     destination,
     mode,
     routes,
+    activeRoute,
     status,
     message,
     location,
     locating,
     pickTarget,
     recents,
+    savedPlaces,
     setMode,
+    setActiveRoute,
+    swapEndpoints,
     setPickTarget,
     pickPlace,
     clearRoute,
@@ -36,7 +41,7 @@ export default function HomeScreen() {
   } = useTrip();
 
   const hasResults = Boolean(routes);
-  const bottomPadding = hasResults ? 430 : 372;
+  const bottomPadding = hasResults ? 486 : 452;
 
   const handleRecenter = () => {
     if (location) {
@@ -48,36 +53,36 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
+      <StatusBar style="dark" />
       <MapCanvas
         ref={mapRef}
         origin={origin}
         destination={destination}
         routes={routes}
+        activeRoute={activeRoute}
         mode={hasResults ? 'results' : 'plan'}
         userLocation={location}
-        topPadding={110}
+        topPadding={112}
         bottomPadding={bottomPadding}
         pickTarget={pickTarget}
         onPick={pickPlace}
-        showLabels={hasResults}
+        showLabels={Boolean(destination)}
+        showAttribution={!hasResults}
       />
 
       <View style={[styles.topBar, { top: insets.top + 10 }]} pointerEvents="box-none">
         <View style={styles.brandChip}>
           <View style={styles.brandTile}>
-            <BrandMark size={15} color={colors.white} />
+            <BrandMark size={14} color={colors.white} />
           </View>
-          <View>
-            <Text style={styles.wordmark}>SHORT CUT</Text>
-            <Text style={styles.tagline}>THE SHORTEST WAY THERE</Text>
-          </View>
+          <Text style={styles.wordmark}>shortcut</Text>
         </View>
 
         <View style={styles.topActions}>
           {hasResults ? (
             <IconButton
               icon="scan"
-              label="Fit route on map"
+              label="Fit the route on the map"
               variant="glass"
               size={42}
               iconSize={18}
@@ -86,7 +91,7 @@ export default function HomeScreen() {
           ) : null}
           <IconButton
             icon="locate"
-            label="Recentre map on my location"
+            label="Recentre the map on my location"
             variant="glass"
             size={42}
             iconSize={18}
@@ -97,8 +102,8 @@ export default function HomeScreen() {
       </View>
 
       {pickTarget ? (
-        <View style={[styles.pickBanner, { top: insets.top + 66 }]} pointerEvents="box-none">
-          <View style={styles.pickPulseMuted}>
+        <View style={[styles.pickBanner, { top: insets.top + 64 }]} pointerEvents="box-none">
+          <View style={styles.pickIcon}>
             <Ionicons name="pin" size={15} color={colors.coral} />
           </View>
           <Text style={styles.pickText}>
@@ -110,7 +115,7 @@ export default function HomeScreen() {
             haptic="light"
             accessibilityLabel="Cancel map selection"
           >
-            <Ionicons name="close" size={15} color={colors.muted} />
+            <Ionicons name="close" size={15} color={colors.paper} />
           </Tap>
         </View>
       ) : null}
@@ -119,10 +124,16 @@ export default function HomeScreen() {
         <RouteSheet
           routes={routes!}
           mode={mode}
-          message={message}
+          activeRoute={activeRoute}
+          busy={status === 'loading'}
+          onSelectRoute={setActiveRoute}
+          onModeChange={setMode}
           onStart={() => router.push('/navigate')}
           onDetails={() => router.push('/details')}
-          onChange={clearRoute}
+          onChange={() => {
+            clearRoute();
+            router.push({ pathname: '/search', params: { target: 'destination' } });
+          }}
           onDismiss={clearRoute}
         />
       ) : (
@@ -134,6 +145,7 @@ export default function HomeScreen() {
           message={message}
           locating={locating}
           recents={recents}
+          savedPlaces={savedPlaces}
           onOriginPress={() =>
             router.push({ pathname: '/search', params: { target: 'origin' } })
           }
@@ -144,6 +156,7 @@ export default function HomeScreen() {
           onModeChange={setMode}
           onFind={() => void calculate()}
           onQuickDestination={(place) => void planQuickTrip(place)}
+          onSwap={swapEndpoints}
         />
       )}
     </View>
@@ -157,8 +170,8 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -166,36 +179,29 @@ const styles = StyleSheet.create({
   brandChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    paddingLeft: 6,
-    paddingRight: 14,
-    paddingVertical: 6,
+    gap: 8,
+    paddingLeft: 5,
+    paddingRight: 13,
+    paddingVertical: 5,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(250,251,245,0.94)',
+    backgroundColor: 'rgba(252,252,246,0.94)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderColor: 'rgba(255,255,255,0.9)',
     ...shadow.tiny,
   },
   brandTile: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.coral,
   },
   wordmark: {
     fontFamily: fonts.displayBold,
-    fontSize: 12.5,
-    letterSpacing: 1.1,
+    fontSize: 15,
+    letterSpacing: -0.4,
     color: colors.ink,
-  },
-  tagline: {
-    marginTop: 1,
-    fontFamily: fonts.bold,
-    fontSize: 6.5,
-    letterSpacing: 1.25,
-    color: colors.mutedLight,
   },
   topActions: {
     flexDirection: 'row',
@@ -204,8 +210,8 @@ const styles = StyleSheet.create({
   },
   pickBanner: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
@@ -216,7 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     ...shadow.lifted,
   },
-  pickPulseMuted: {
+  pickIcon: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -236,6 +242,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
 });

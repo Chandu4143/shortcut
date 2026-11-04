@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -11,14 +12,46 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Kicker } from '../components/Controls';
 import { Tap } from '../components/Tap';
-import { PRESET_PLACES, presetToPlace } from '../data/places';
-import { shortLabel } from '../lib/format';
+import { HYDERABAD_CENTER, PRESET_PLACES, presetToPlace } from '../data/places';
+import { haversine } from '../lib/geo';
+import { formatShortDistance, shortLabel } from '../lib/format';
 import { searchPlaces } from '../lib/routing';
+import type { Place } from '../types';
 import { useTrip } from '../state/TripProvider';
 import { colors, fonts, radius, shadow } from '../theme';
-import type { Place } from '../types';
+import type { SavedPlaceKind } from '../lib/storage';
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function placeParts(place: Place) {
+  const parts = place.label.split(',').map((part) => part.trim()).filter(Boolean);
+  return { title: parts[0] ?? place.label, context: parts.slice(1, 3).join(', ') };
+}
+
+function iconForPlace(place: Place): IconName {
+  const text = place.label.toLowerCase();
+  if (text.includes('airport')) return 'airplane';
+  if (text.includes('railway') || text.includes('junction') || text.includes('station')) return 'train';
+  if (text.includes('metro')) return 'subway';
+  if (text.includes('mall') || text.includes('market') || text.includes('shopping') || text.includes('ikea')) {
+    return 'bag-handle';
+  }
+  if (text.includes('hospital') || text.includes('clinic')) return 'medkit';
+  if (text.includes('college') || text.includes('university') || text.includes('school')) return 'school';
+  if (text.includes('lake') || text.includes('sagar')) return 'water';
+  if (text.includes('park') || text.includes('garden')) return 'leaf';
+  if (text.includes('fort') || text.includes('temple') || text.includes('masjid')) return 'sparkles';
+  if (text.includes('charminar') || text.includes('golconda')) return 'sparkles';
+  if (text.includes('hitec') || text.includes('cyber')) return 'business';
+  return 'location';
+}
+
+function distanceLabel(place: Place, from: { lat: number; lon: number }) {
+  const meters = haversine(place, from);
+  if (meters < 80) return 'Here';
+  return formatShortDistance(meters);
+}
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -26,72 +59,125 @@ export default function SearchScreen() {
   const target = params.target === 'origin' ? 'origin' : 'destination';
   const {
     origin,
-    destination,
+    location,
     recents,
+    savedPlaces,
     setOrigin,
-    setDestination,
     setPickTarget,
+    planQuickTrip,
     locateMe,
     locating,
+    savePlace,
+    forgetPlace,
+    clearRecentPlaces,
   } = useTrip();
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Place[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
+  const [wide, setWide] = useState(false);
+  const [saveKind, setSaveKind] = useState<SavedPlaceKind | null>(null);
   const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
-  const current = target === 'origin' ? origin : destination;
-  const title = target === 'origin' ? 'Starting point' : 'Where to?';
+  const isLocal = Boolean(
+    location && haversine(location, HYDERABAD_CENTER) < 90_000,
+  );
+  const nearLat = isLocal && location ? location.lat : HYDERABAD_CENTER.lat;
+  const nearLon = isLocal && location ? location.lon : HYDERABAD_CENTER.lon;
+  const distanceFrom = origin ?? location ?? HYDERABAD_CENTER;
+
+  const title = saveKind
+    ? `Save ${saveKind}`
+    : target === 'origin'
+      ? 'Starting point'
+      : 'Where to?';
+  const kicker = saveKind ? 'Saved place' : target === 'origin' ? 'From' : 'To';
 
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
       setResults([]);
       setSearching(false);
+      setSearched(false);
       setError('');
       return;
     }
     const controller = new AbortController();
     setSearching(true);
+    setSearched(false);
     setError('');
     const timer = setTimeout(() => {
-      searchPlaces(trimmed, controller.signal)
+      searchPlaces(trimmed, controller.signal, {
+        near: { lat: nearLat, lon: nearLon },
+        wide,
+      })
         .then((places) => {
           if (controller.signal.aborted) return;
           setResults(places);
           setSearching(false);
+          setSearched(true);
         })
         .catch((caught: unknown) => {
           if (controller.signal.aborted) return;
           setResults([]);
           setSearching(false);
+          setSearched(true);
           setError(caught instanceof Error ? caught.message : 'Search failed. Try again.');
         });
-    }, 340);
+    }, 320);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [nearLat, nearLon, query, wide]);
 
-  const presets = useMemo(() => PRESET_PLACES.slice(0, 8).map(presetToPlace), []);
+  const excludedNames = new Set(
+    [
+      ...recents,
+      ...(savedPlaces.home ? [savedPlaces.home] : []),
+      ...(savedPlaces.work ? [savedPlaces.work] : []),
+    ].map((place) => place.label.split(',')[0]?.trim().toLowerCase() ?? ''),
+  );
+
+  const popular = PRESET_PLACES.map(presetToPlace)
+    .map((place) => ({ place, meters: haversine(place, distanceFrom) }))
+    .filter(
+      ({ place, meters }) =>
+        meters > 250 && !excludedNames.has(place.label.split(',')[0]?.trim().toLowerCase() ?? ''),
+    )
+    .sort((a, b) => a.meters - b.meters)
+    .slice(0, 6)
+    .map((entry) => entry.place);
+
+  const saveOptions = PRESET_PLACES.map(presetToPlace)
+    .map((place) => ({ place, meters: haversine(place, distanceFrom) }))
+    .sort((a, b) => a.meters - b.meters)
+    .slice(0, 6)
+    .map((entry) => entry.place);
 
   const choose = (place: Place) => {
     Keyboard.dismiss();
+    if (saveKind) {
+      void savePlace(saveKind, place).finally(() => {
+        setSaveKind(null);
+        router.back();
+      });
+      return;
+    }
     if (target === 'origin') {
       setOrigin(place);
-    } else {
-      setDestination(place);
+      router.back();
+      return;
     }
+    void planQuickTrip(place);
     router.back();
   };
 
   const chooseCurrentLocation = async () => {
     const place = await locateMe();
-    if (place) {
-      if (target === 'destination') setDestination(place);
-      router.back();
-    }
+    if (place) router.back();
   };
 
   const pickOnMap = () => {
@@ -100,23 +186,51 @@ export default function SearchScreen() {
     router.back();
   };
 
+  const beginSave = (kind: SavedPlaceKind) => {
+    setSaveKind(kind);
+    setQuery('');
+    setResults([]);
+    setWide(false);
+    setTimeout(() => inputRef.current?.focus(), 40);
+  };
+
+  const back = () => {
+    if (saveKind) {
+      setSaveKind(null);
+      return;
+    }
+    router.back();
+  };
+
   const showEmpty = query.trim().length < 2;
+  const savedRows = [
+    savedPlaces.home
+      ? { kind: 'home' as const, label: 'Home', icon: 'home' as IconName, place: savedPlaces.home }
+      : null,
+    savedPlaces.work
+      ? { kind: 'work' as const, label: 'Work', icon: 'briefcase' as IconName, place: savedPlaces.work }
+      : null,
+  ].filter(Boolean) as {
+    kind: SavedPlaceKind;
+    label: string;
+    icon: IconName;
+    place: Place;
+  }[];
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 6 }]}>
+    <View style={[styles.root, { paddingTop: insets.top + 4 }]}>
+      <StatusBar style="dark" />
       <View style={styles.header}>
         <Tap
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={back}
           haptic="light"
-          accessibilityLabel="Close search"
+          accessibilityLabel={saveKind ? 'Cancel saving this place' : 'Close search'}
         >
           <Ionicons name="arrow-back" size={19} color={colors.ink} />
         </Tap>
         <View style={styles.headerCopy}>
-          <Kicker color={target === 'origin' ? colors.teal : colors.coral}>
-            {target === 'origin' ? 'From' : 'Destination'}
-          </Kicker>
+          <Text style={styles.kicker}>{kicker}</Text>
           <Text style={styles.title}>{title}</Text>
         </View>
       </View>
@@ -127,9 +241,18 @@ export default function SearchScreen() {
           ref={inputRef}
           style={styles.input}
           value={query}
-          onChangeText={setQuery}
-          placeholder={target === 'origin' ? 'Search a starting point' : 'Search an address or place'}
-          placeholderTextColor={colors.mutedLight}
+          onChangeText={(value) => {
+            setQuery(value);
+            setWide(false);
+          }}
+          placeholder={
+            saveKind
+              ? `Search an address for ${saveKind}`
+              : target === 'origin'
+                ? 'Search a starting point'
+                : 'Search an address or place'
+          }
+          placeholderTextColor={colors.muted}
           autoFocus
           returnKeyType="search"
           selectionColor={colors.coral}
@@ -143,6 +266,7 @@ export default function SearchScreen() {
             style={styles.clearButton}
             onPress={() => {
               setQuery('');
+              setWide(false);
               inputRef.current?.focus();
             }}
             haptic="none"
@@ -153,55 +277,75 @@ export default function SearchScreen() {
         ) : null}
       </View>
 
-      <View style={styles.shortcuts}>
-        {target === 'origin' ? (
+      {!saveKind ? (
+        <View style={styles.shortcuts}>
+          {target === 'origin' ? (
+            <Tap
+              style={styles.shortcut}
+              onPress={() => void chooseCurrentLocation()}
+              accessibilityLabel="Use my current location"
+              haptic="light"
+            >
+              <View style={[styles.shortcutIcon, { backgroundColor: colors.tealSoft }]}>
+                {locating ? (
+                  <ActivityIndicator size="small" color={colors.teal} />
+                ) : (
+                  <Ionicons name="locate" size={16} color={colors.teal} />
+                )}
+              </View>
+              <Text style={styles.shortcutText}>Use my current location</Text>
+              <Ionicons name="chevron-forward" size={15} color={colors.mutedLight} />
+            </Tap>
+          ) : null}
           <Tap
             style={styles.shortcut}
-            onPress={() => void chooseCurrentLocation()}
-            accessibilityLabel="Use my current location"
+            onPress={pickOnMap}
+            accessibilityLabel="Choose on map"
             haptic="light"
           >
-            <View style={[styles.shortcutIcon, { backgroundColor: colors.tealSoft }]}>
-              {locating ? (
-                <ActivityIndicator size="small" color={colors.teal} />
-              ) : (
-                <Ionicons name="locate" size={16} color={colors.teal} />
-              )}
+            <View style={[styles.shortcutIcon, { backgroundColor: colors.coralSoft }]}>
+              <Ionicons name="map-outline" size={16} color={colors.coral} />
             </View>
-            <Text style={styles.shortcutText}>Use my current location</Text>
+            <Text style={styles.shortcutText}>
+              {target === 'origin' ? 'Set starting point on map' : 'Choose on map'}
+            </Text>
             <Ionicons name="chevron-forward" size={15} color={colors.mutedLight} />
           </Tap>
-        ) : null}
-        <Tap
-          style={styles.shortcut}
-          onPress={pickOnMap}
-          accessibilityLabel="Choose on map"
-          haptic="light"
-        >
-          <View style={[styles.shortcutIcon, { backgroundColor: colors.coralSoft }]}>
-            <Ionicons name="map-outline" size={16} color={colors.coral} />
-          </View>
-          <Text style={styles.shortcutText}>
-            {target === 'origin' ? 'Set starting point on map' : 'Choose destination on map'}
+        </View>
+      ) : (
+        <View style={styles.saveHint}>
+          <Ionicons name="bookmark" size={14} color={colors.teal} />
+          <Text style={styles.saveHintText}>
+            Pick the place you want to save as {saveKind}. You can change it any time.
           </Text>
-          <Ionicons name="chevron-forward" size={15} color={colors.mutedLight} />
-        </Tap>
-      </View>
+        </View>
+      )}
 
-      {current ? (
-        <View style={styles.currentRow}>
-          <View style={styles.currentDot} />
-          <Text style={styles.currentLabel} numberOfLines={1}>
-            {shortLabel(current.label, 3)}
-          </Text>
-          <Tap
-            haptic="none"
-            onPress={() => (target === 'origin' ? setOrigin(null) : setDestination(null))}
-            accessibilityLabel="Clear current value"
-          >
-            <Text style={styles.currentClear}>
-              {target === 'origin' ? 'Reset' : 'Clear'}
-            </Text>
+      {saveKind && savedPlaces[saveKind] ? (
+        <Tap
+          style={styles.removeSaved}
+          haptic="light"
+          accessibilityLabel={`Remove saved ${saveKind}`}
+          onPress={() => {
+            void forgetPlace(saveKind).then(() => {
+              setSaveKind(null);
+              router.back();
+            });
+          }}
+        >
+          <Ionicons name="trash-outline" size={14} color={colors.danger} />
+          <Text style={styles.removeSavedText}>Remove saved {saveKind}</Text>
+        </Tap>
+      ) : null}
+
+      {wide && !showEmpty && query.trim().length >= 2 ? (
+        <View style={styles.wideRow}>
+          <View style={styles.wideChip}>
+            <Ionicons name="globe-outline" size={12} color={colors.teal} />
+            <Text style={styles.wideText}>Searching across India</Text>
+          </View>
+          <Tap haptic="none" onPress={() => setWide(false)} accessibilityLabel="Search near Hyderabad instead">
+            <Text style={styles.wideReset}>Back to Hyderabad</Text>
           </Tap>
         </View>
       ) : null}
@@ -210,13 +354,14 @@ export default function SearchScreen() {
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         {error ? (
           <View style={styles.errorCard}>
             <Ionicons name="cloud-offline-outline" size={18} color={colors.danger} />
             <View style={styles.errorCopy}>
-              <Text style={styles.errorTitle}>Search unavailable</Text>
+              <Text style={styles.errorTitle}>Search is unavailable</Text>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           </View>
@@ -224,18 +369,126 @@ export default function SearchScreen() {
 
         {showEmpty ? (
           <>
-            {target === 'destination' && recents.length ? (
+            {!saveKind ? (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Kicker color={colors.muted}>Recent</Kicker>
+                  <Text style={styles.sectionTitle}>Saved places</Text>
                   <View style={styles.rule} />
                 </View>
-                {recents.map((place, index) => (
+                {savedRows.length ? (
+                  <>
+                    {savedRows.map((row) => (
+                      <PlaceRow
+                        key={row.kind}
+                        place={row.place}
+                        title={row.label}
+                        subtitle={shortLabel(row.place.label, 2)}
+                        icon={row.icon}
+                        tint={colors.teal}
+                        distance={distanceLabel(row.place, distanceFrom)}
+                        onPress={() => choose(row.place)}
+                      />
+                    ))}
+                    <View style={styles.savedActions}>
+                      {savedRows.some((row) => row.kind === 'home') ? (
+                        <Tap
+                          haptic="none"
+                          style={styles.savedActionButton}
+                          onPress={() => beginSave('home')}
+                          accessibilityLabel="Change home"
+                        >
+                          <Text style={styles.savedLink}>Change home</Text>
+                        </Tap>
+                      ) : (
+                        <Tap
+                          haptic="none"
+                          style={styles.savedActionButton}
+                          onPress={() => beginSave('home')}
+                          accessibilityLabel="Set home"
+                        >
+                          <Text style={styles.savedLink}>Set home</Text>
+                        </Tap>
+                      )}
+                      <View style={styles.savedDot} />
+                      {savedRows.some((row) => row.kind === 'work') ? (
+                        <Tap
+                          haptic="none"
+                          style={styles.savedActionButton}
+                          onPress={() => beginSave('work')}
+                          accessibilityLabel="Change work"
+                        >
+                          <Text style={styles.savedLink}>Change work</Text>
+                        </Tap>
+                      ) : (
+                        <Tap
+                          haptic="none"
+                          style={styles.savedActionButton}
+                          onPress={() => beginSave('work')}
+                          accessibilityLabel="Set work"
+                        >
+                          <Text style={styles.savedLink}>Set work</Text>
+                        </Tap>
+                      )}
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.savedCards}>
+                    <Tap
+                      style={styles.savedCard}
+                      onPress={() => beginSave('home')}
+                      haptic="light"
+                      accessibilityLabel="Set your home address"
+                    >
+                      <View style={styles.savedCardIcon}>
+                        <Ionicons name="home" size={16} color={colors.teal} />
+                      </View>
+                      <View style={styles.savedCardCopy}>
+                        <Text style={styles.savedCardTitle}>Home</Text>
+                        <Text style={styles.savedCardText}>Add a place</Text>
+                      </View>
+                      <Ionicons name="add" size={16} color={colors.muted} />
+                    </Tap>
+                    <Tap
+                      style={styles.savedCard}
+                      onPress={() => beginSave('work')}
+                      haptic="light"
+                      accessibilityLabel="Set your work address"
+                    >
+                      <View style={styles.savedCardIcon}>
+                        <Ionicons name="briefcase" size={16} color={colors.teal} />
+                      </View>
+                      <View style={styles.savedCardCopy}>
+                        <Text style={styles.savedCardTitle}>Work</Text>
+                        <Text style={styles.savedCardText}>Add a place</Text>
+                      </View>
+                      <Ionicons name="add" size={16} color={colors.muted} />
+                    </Tap>
+                  </View>
+                )}
+              </View>
+            ) : null}
+
+            {recents.length && !saveKind ? (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Recent</Text>
+                  <View style={styles.rule} />
+                  <Tap
+                    haptic="none"
+                    style={styles.sectionActionButton}
+                    onPress={() => void clearRecentPlaces()}
+                    accessibilityLabel="Clear recent destinations"
+                  >
+                    <Text style={styles.sectionAction}>Clear</Text>
+                  </Tap>
+                </View>
+                {recents.slice(0, 3).map((place, index) => (
                   <PlaceRow
                     key={`${place.label}-${index}`}
                     place={place}
                     icon="time-outline"
-                    tint={colors.teal}
+                    tint={colors.muted}
+                    distance={distanceLabel(place, distanceFrom)}
                     onPress={() => choose(place)}
                   />
                 ))}
@@ -244,49 +497,86 @@ export default function SearchScreen() {
 
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Kicker color={colors.muted}>Popular in Hyderabad</Kicker>
+                <Text style={styles.sectionTitle}>
+                  {saveKind ? `Places near you` : 'Popular in Hyderabad'}
+                </Text>
                 <View style={styles.rule} />
               </View>
-              {presets.map((place) => (
+              {(saveKind ? saveOptions.slice(0, 4) : popular).map((place) => (
                 <PlaceRow
                   key={place.label}
                   place={place}
-                  icon="location-outline"
+                  icon={iconForPlace(place)}
                   tint={colors.coral}
+                  distance={distanceLabel(place, distanceFrom)}
                   onPress={() => choose(place)}
                 />
               ))}
             </View>
 
-            <View style={styles.hintCard}>
-              <Ionicons name="flash" size={16} color={colors.amber} />
-              <Text style={styles.hintText}>
-                Short Cut compares the least-distance route with the conventional fastest
-                alternative before you ride.
-              </Text>
-            </View>
+            {!saveKind ? (
+              <View style={styles.hintCard}>
+                <Ionicons name="information-circle-outline" size={15} color={colors.teal} />
+                <Text style={styles.hintText}>
+                  Short Cut ranks mapped streets by distance, then shows what the conventional
+                  fastest route costs in extra metres.
+                </Text>
+              </View>
+            ) : null}
           </>
         ) : (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Kicker color={colors.muted}>
-                {searching ? 'Searching Hyderabad' : `${results.length} matches`}
-              </Kicker>
-              <View style={styles.rule} />
-            </View>
+            {!searching && results.length ? (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>
+                  {wide ? 'Matches across India' : 'Matches near Hyderabad'}
+                </Text>
+                <View style={styles.rule} />
+                <Text style={styles.countText}>{results.length}</Text>
+              </View>
+            ) : null}
+
+            {searching && !results.length ? (
+              <View style={styles.searchingRow}>
+                <ActivityIndicator size="small" color={colors.teal} />
+                <Text style={styles.searchingText}>Searching mapped places…</Text>
+              </View>
+            ) : null}
+
             {results.map((place) => (
               <PlaceRow
                 key={`${place.label}-${place.lat}-${place.lon}`}
                 place={place}
-                icon={place.kind === 'preset' ? 'business-outline' : 'location-outline'}
+                icon={iconForPlace(place)}
                 tint={place.kind === 'preset' ? colors.coral : colors.teal}
+                distance={distanceLabel(place, distanceFrom)}
                 onPress={() => choose(place)}
               />
             ))}
-            {!searching && !results.length && !error ? (
-              <Text style={styles.emptyText}>
-                No places matched. Try a landmark, street, or neighbourhood.
-              </Text>
+
+            {!searching && searched && !results.length && !error ? (
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="map-outline" size={20} color={colors.teal} />
+                </View>
+                <Text style={styles.emptyTitle}>
+                  No matches {wide ? 'across India' : 'near Hyderabad'}
+                </Text>
+                <Text style={styles.emptyText}>
+                  Try a landmark, street, or neighbourhood. Mapped names follow OpenStreetMap.
+                </Text>
+                {!wide ? (
+                  <Tap
+                    style={styles.wideButton}
+                    onPress={() => setWide(true)}
+                    haptic="light"
+                    accessibilityLabel="Search across India"
+                  >
+                    <Ionicons name="globe-outline" size={15} color={colors.teal} />
+                    <Text style={styles.wideButtonText}>Search across India</Text>
+                  </Tap>
+                ) : null}
+              </View>
             ) : null}
           </View>
         )}
@@ -297,39 +587,50 @@ export default function SearchScreen() {
 
 function PlaceRow({
   place,
+  title,
+  subtitle,
   icon,
   tint,
+  distance,
   onPress,
 }: {
   place: Place;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title?: string;
+  subtitle?: string;
+  icon: IconName;
   tint: string;
+  distance: string;
   onPress: () => void;
 }) {
-  const parts = place.label.split(',').map((part) => part.trim()).filter(Boolean);
-  const primary = parts[0] ?? place.label;
-  const secondary = parts.slice(1, 4).join(', ');
+  const parts = placeParts(place);
+  const heading = title ?? parts.title;
+  const context = subtitle ?? parts.context;
   return (
     <Tap
       style={styles.row}
       onPress={onPress}
       haptic="light"
-      accessibilityLabel={`Choose ${primary}`}
+      accessibilityLabel={`Choose ${heading}, ${context}`}
     >
-      <View style={[styles.rowIcon, { backgroundColor: tint === colors.coral ? colors.coralSoft : colors.tealSoft }]}>
+      <View
+        style={[
+          styles.rowIcon,
+          { backgroundColor: tint === colors.coral ? colors.coralSoft : colors.tealSoft },
+        ]}
+      >
         <Ionicons name={icon} size={16} color={tint} />
       </View>
       <View style={styles.rowCopy}>
         <Text style={styles.rowTitle} numberOfLines={1}>
-          {primary}
+          {heading}
         </Text>
-        {secondary ? (
+        {context ? (
           <Text style={styles.rowSubtitle} numberOfLines={1}>
-            {secondary}
+            {context}
           </Text>
         ) : null}
       </View>
-      <Ionicons name="chevron-forward" size={15} color={colors.mutedLight} />
+      <Text style={styles.rowDistance}>{distance}</Text>
     </Tap>
   );
 }
@@ -344,13 +645,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 18,
-    paddingTop: 6,
-    paddingBottom: 14,
+    paddingTop: 4,
+    paddingBottom: 13,
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
@@ -360,7 +661,14 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     flex: 1,
-    gap: 2,
+    gap: 1,
+  },
+  kicker: {
+    fontFamily: fonts.bold,
+    fontSize: 9.5,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: colors.teal,
   },
   title: {
     fontFamily: fonts.displaySemibold,
@@ -378,20 +686,20 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
     ...shadow.tiny,
   },
   input: {
     flex: 1,
     fontFamily: fonts.medium,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.ink,
     paddingVertical: 0,
   },
   clearButton: {
-    width: 26,
-    height: 26,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -404,12 +712,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    minHeight: 46,
     paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
-    backgroundColor: 'rgba(250,251,245,0.65)',
+    backgroundColor: 'rgba(252,252,246,0.7)',
   },
   shortcutIcon: {
     width: 32,
@@ -421,60 +730,106 @@ const styles = StyleSheet.create({
   shortcutText: {
     flex: 1,
     fontFamily: fonts.semibold,
-    fontSize: 12,
+    fontSize: 12.5,
     color: colors.inkSoft,
   },
-  currentRow: {
+  saveHint: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
     marginHorizontal: 20,
     marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    backgroundColor: colors.tealSoft,
   },
-  currentDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.mint,
-  },
-  currentLabel: {
+  saveHintText: {
     flex: 1,
     fontFamily: fonts.sans,
-    fontSize: 10.5,
-    color: colors.muted,
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: colors.inkSoft,
   },
-  currentClear: {
+  wideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginTop: 10,
+  },
+  wideChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.tealSoft,
+  },
+  wideText: {
     fontFamily: fonts.semibold,
     fontSize: 10,
     color: colors.teal,
   },
+  wideReset: {
+    fontFamily: fonts.semibold,
+    fontSize: 10,
+    color: colors.teal,
+    textDecorationLine: 'underline',
+    textDecorationColor: colors.lineStrong,
+  },
   scroll: {
     flex: 1,
-    marginTop: 10,
+    marginTop: 8,
   },
   scrollContent: {
     paddingHorizontal: 18,
   },
   section: {
-    marginTop: 14,
+    marginTop: 10,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 6,
+    gap: 9,
+    marginBottom: 4,
+    minHeight: 24,
+  },
+  sectionTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.muted,
   },
   rule: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.line,
   },
+  sectionAction: {
+    fontFamily: fonts.semibold,
+    fontSize: 10,
+    color: colors.teal,
+  },
+  sectionActionButton: {
+    minHeight: 34,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  countText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: colors.muted,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 9,
-    paddingHorizontal: 6,
+    minHeight: 58,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: radius.md,
   },
   rowIcon: {
@@ -490,29 +845,169 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 13.5,
+    fontSize: 14,
     color: colors.ink,
   },
   rowSubtitle: {
     fontFamily: fonts.sans,
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 11,
+    lineHeight: 15,
     color: colors.muted,
   },
-  emptyText: {
+  rowDistance: {
+    fontFamily: fonts.semibold,
+    fontSize: 10.5,
+    color: colors.teal,
+  },
+  savedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 6,
+    paddingTop: 2,
+    paddingBottom: 4,
+  },
+  savedCards: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
+  },
+  savedCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 54,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+  },
+  savedCardIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.tealSoft,
+  },
+  savedCardCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  savedCardTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
+    color: colors.ink,
+  },
+  savedCardText: {
+    fontFamily: fonts.sans,
+    fontSize: 10,
+    color: colors.muted,
+  },
+  savedLink: {
+    fontFamily: fonts.semibold,
+    fontSize: 10.5,
+    color: colors.teal,
+  },
+  savedActionButton: {
+    minHeight: 34,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  savedDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.lineStrong,
+  },
+  removeSaved: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    minHeight: 38,
+    marginHorizontal: 20,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.coralSoft,
+  },
+  removeSavedText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+    color: colors.danger,
+  },
+  searchingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingVertical: 24,
+    paddingHorizontal: 4,
+  },
+  searchingText: {
     fontFamily: fonts.sans,
     fontSize: 12,
-    lineHeight: 18,
     color: colors.muted,
-    paddingVertical: 18,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 28,
+    marginTop: 10,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.line,
+  },
+  emptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.tealSoft,
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displaySemibold,
+    fontSize: 17,
+    letterSpacing: -0.5,
+    color: colors.ink,
+  },
+  emptyText: {
+    marginTop: 5,
+    maxWidth: 280,
     textAlign: 'center',
+    fontFamily: fonts.sans,
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: colors.muted,
+  },
+  wideButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: radius.pill,
+    backgroundColor: colors.tealSoft,
+  },
+  wideButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11.5,
+    color: colors.teal,
   },
   errorCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 9,
     padding: 12,
-    marginTop: 14,
+    marginTop: 10,
     borderRadius: radius.md,
     backgroundColor: colors.coralSoft,
   },
@@ -522,29 +1017,29 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontFamily: fonts.bold,
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.danger,
   },
   errorText: {
     fontFamily: fonts.sans,
-    fontSize: 10.5,
-    lineHeight: 14,
+    fontSize: 11,
+    lineHeight: 15,
     color: colors.inkSoft,
   },
   hintCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 9,
-    marginTop: 22,
+    gap: 8,
+    marginTop: 18,
     padding: 12,
     borderRadius: radius.md,
-    backgroundColor: colors.amberSoft,
+    backgroundColor: colors.surfaceAlt,
   },
   hintText: {
     flex: 1,
     fontFamily: fonts.sans,
     fontSize: 10.5,
     lineHeight: 15,
-    color: colors.inkSoft,
+    color: colors.muted,
   },
 });

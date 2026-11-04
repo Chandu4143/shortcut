@@ -8,9 +8,9 @@ Download the APK below and open it on your phone. No store, no account, no sign-
 
 | File | Size | Use for |
 |---|---:|---|
-| `ShortCut-1.0.0-arm64-v8a.apk` | 40.8 MB | **Almost every Android phone from 2017 onward** — start here |
-| `ShortCut-1.0.0-armeabi-v7a.apk` | 32.1 MB | Older 32-bit phones, only if the arm64 build says "App not installed" |
-| `ShortCut-1.0.0-x86_64.apk` | 41.9 MB | Emulators and Intel test devices — not for phones |
+| `ShortCut-1.0.0-arm64-v8a.apk` | 41.0 MB | **Almost every Android phone from 2017 onward** — start here |
+| `ShortCut-1.0.0-armeabi-v7a.apk` | 32.2 MB | Older 32-bit phones, only if the arm64 build says "App not installed" |
+| `ShortCut-1.0.0-x86_64.apk` | 42.0 MB | Emulators and Intel test devices — not for phones |
 
 ### Install
 
@@ -23,10 +23,11 @@ Download the APK below and open it on your phone. No store, no account, no sign-
 
 ### What works
 
-- Hyderabad map, GPS origin, place search, and map pin selection.
+- A faster, map-first planner with saved Home/Work, recent trips and a destination search that stays in Hyderabad.
 - Distance-first motorcycle and walking routes via Valhalla, with a live OpenStreetMap/Overpass fallback.
-- Shortest versus fastest comparison, distance saved, turn-by-turn details, and route sharing.
-- Live navigation, GPS tracking, off-route rerouting, voice prompts, and a preview drive simulation.
+- Shortest versus fastest comparison you can switch between, with the metres saved shown up front.
+- Turn-by-turn details, route sharing, live navigation, GPS tracking, off-route rerouting, voice prompts, and a preview ride.
+- Ride and Walk can be changed on the route sheet without losing the route.
 - Accepts `geo:`, `google.navigation:`, and Google Maps links from other apps.
 
 ### Notes
@@ -34,11 +35,12 @@ Download the APK below and open it on your phone. No store, no account, no sign-
 - Signed with the project debug keystore: fine for direct sideloading, **not** Play Store ready.
 - Public routing and geocoding endpoints are best-effort; a failed request shows a retry message.
 - Map coverage and OSM access data vary. Review the route before you ride.
+- This 1.0.0 asset was refreshed on 4 November 2026 with the redesigned UI; uninstall the older APK only if Android refuses to update it.
 
 ### SHA-256
 
 ```
-E7A4619AB8CFB682F4251F4B1F4FC1EC76B320183B112ACC5B1C4F54BA8A38EE  ShortCut-1.0.0-arm64-v8a.apk
-880A6136AD24F4A1C1B708307E573BE887AF77C3B433A4B8BF0D3257459DE478  ShortCut-1.0.0-armeabi-v7a.apk
-42F3A244025392BDDC7FB117BF26001A124B78E44D3FC0CFBF0B7D577B207221  ShortCut-1.0.0-x86_64.apk
+E9FF81AEEE7E3687C39CD36154BA5B7D875D59D9787718D117C5850E8711ED22  ShortCut-1.0.0-arm64-v8a.apk
+EB4704916B1A09F43D770FA70AB55A44FC34DA3BAB98CB59C187F968B19CD150  ShortCut-1.0.0-armeabi-v7a.apk
+31BE9F946AD2EB48CE66E79B383563AB6C0D41E1C7E83A5B4CD168A3968AD7F0  ShortCut-1.0.0-x86_64.apk
 ```

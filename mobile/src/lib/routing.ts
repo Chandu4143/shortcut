@@ -19,7 +19,7 @@ const OVERPASS_ENDPOINTS = [
 ];
 
 class MinHeap {
-  private items: Array<{ id: string; cost: number }> = [];
+  private items: { id: string; cost: number }[] = [];
 
   get size() {
     return this.items.length;
@@ -74,7 +74,7 @@ interface ValhallaStep {
 interface ValhallaRoute {
   distance?: number;
   duration?: number;
-  legs?: Array<{ steps?: ValhallaStep[] }>;
+  legs?: { steps?: ValhallaStep[] }[];
 }
 
 function withTimeout(parent: AbortSignal | undefined, milliseconds: number) {
@@ -328,9 +328,9 @@ function addEdge(graph: RoadGraph, from: string, edge: Edge) {
   graph.set(from, edges);
 }
 
-function buildGraph(elements: Array<Record<string, unknown>>, mode: TravelMode) {
+function buildGraph(elements: Record<string, unknown>[], mode: TravelMode) {
   const nodes = new Map<string, RoadNode>();
-  const ways: Array<{ nodes: string[]; tags: Record<string, string> }> = [];
+  const ways: { nodes: string[]; tags: Record<string, string> }[] = [];
   for (const element of elements) {
     if (
       element.type === 'node' &&
@@ -509,7 +509,7 @@ async function fetchRoadElements(query: string) {
         signal,
       });
       if (!response.ok) continue;
-      const data = (await response.json()) as { elements?: Array<Record<string, unknown>> };
+      const data = (await response.json()) as { elements?: Record<string, unknown>[] };
       if (Array.isArray(data.elements)) return data.elements;
     } catch {
       // Try the next public instance when this one is overloaded or unreachable.
@@ -571,7 +571,7 @@ export async function findRoutes(from: Place, to: Place, mode: TravelMode): Prom
   return findRoutesFromOverpass(from, to, mode);
 }
 
-function composeLabel(parts: Array<string | undefined>): string {
+function composeLabel(parts: (string | undefined)[]): string {
   const seen = new Set<string>();
   const clean: string[] = [];
   for (const part of parts) {
@@ -601,13 +601,39 @@ interface PhotonFeature {
   };
 }
 
-async function searchPhoton(query: string, signal?: AbortSignal): Promise<Place[]> {
+/** Anything farther than this from the rider is not a useful "nearby" result. */
+const NEAR_RADIUS_METERS = 45_000;
+
+export interface PlaceSearchOptions {
+  /** Bias results around this point. Defaults to central Hyderabad. */
+  near?: { lat: number; lon: number };
+  /** Skip the local radius filter, e.g. when the rider asks to search across India. */
+  wide?: boolean;
+}
+
+function withinRadius(place: Place, near: { lat: number; lon: number }) {
+  return haversine(place, near) <= NEAR_RADIUS_METERS;
+}
+
+/** Broad bounding box for India, used when the rider searches beyond Hyderabad. */
+function withinIndia(place: Place) {
+  return place.lat >= 8 && place.lat <= 37.5 && place.lon >= 68 && place.lon <= 97.5;
+}
+
+async function searchPhoton(
+  query: string,
+  signal: AbortSignal | undefined,
+  near: { lat: number; lon: number },
+  wide: boolean,
+): Promise<Place[]> {
   const params = new URLSearchParams({
     q: query,
-    limit: '7',
+    limit: '10',
     lang: 'en',
-    lat: String(HYDERABAD_CENTER.lat),
-    lon: String(HYDERABAD_CENTER.lon),
+    lat: String(near.lat),
+    lon: String(near.lon),
+    zoom: '12',
+    location_bias_scale: '0.7',
   });
   const { signal: timeoutSignal, cleanup } = withTimeout(signal, SEARCH_TIMEOUT_MS);
   try {
@@ -622,6 +648,7 @@ async function searchPhoton(query: string, signal?: AbortSignal): Promise<Place[
       const properties = feature.properties;
       const coordinates = feature.geometry?.coordinates;
       if (!properties || !coordinates) continue;
+      if (wide && properties.country && properties.country.toLowerCase() !== 'india') continue;
       const label = composeLabel([
         properties.name,
         [properties.housenumber, properties.street].filter(Boolean).join(' '),
@@ -647,16 +674,26 @@ interface NominatimResult {
   display_name: string;
 }
 
-async function searchNominatim(query: string, signal?: AbortSignal): Promise<Place[]> {
+async function searchNominatim(
+  query: string,
+  signal: AbortSignal | undefined,
+  near: { lat: number; lon: number },
+  wide: boolean,
+): Promise<Place[]> {
+  const deltaLat = 0.5;
+  const deltaLon = 0.65;
+  const viewbox = wide
+    ? HYDERABAD_VIEWBOX
+    : [near.lon - deltaLon, near.lat - deltaLat, near.lon + deltaLon, near.lat + deltaLat].join(',');
   const params = new URLSearchParams({
     q: query,
     format: 'jsonv2',
-    limit: '7',
+    limit: '10',
     addressdetails: '1',
     'accept-language': 'en',
     countrycodes: 'in',
-    viewbox: HYDERABAD_VIEWBOX,
-    bounded: '0',
+    viewbox,
+    bounded: wide ? '0' : '1',
     dedupe: '1',
   });
   const { signal: timeoutSignal, cleanup } = withTimeout(signal, SEARCH_TIMEOUT_MS);
@@ -683,33 +720,70 @@ async function searchNominatim(query: string, signal?: AbortSignal): Promise<Pla
   }
 }
 
-export async function searchPlaces(query: string, signal?: AbortSignal): Promise<Place[]> {
-  let places: Place[] = [];
-  try {
-    places = await searchPhoton(query, signal);
-  } catch {
-    places = [];
+function dedupePlaces(places: Place[]): Place[] {
+  const result: Place[] = [];
+  for (const place of places) {
+    const name = place.label.split(',')[0]?.trim().toLowerCase() ?? '';
+    const duplicate = result.some((existing) => {
+      const distance = haversine(existing, place);
+      if (distance < 90) return true;
+      const existingName = existing.label.split(',')[0]?.trim().toLowerCase() ?? '';
+      return Boolean(name) && name === existingName && distance < 1500;
+    });
+    if (duplicate) continue;
+    result.push(place);
   }
-  if (!places.length) {
+  return result;
+}
+
+export async function searchPlaces(
+  query: string,
+  signal?: AbortSignal,
+  options: PlaceSearchOptions = {},
+): Promise<Place[]> {
+  const near = options.near ?? HYDERABAD_CENTER;
+  const wide = options.wide ?? false;
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  const localPresets = searchPresetPlaces(trimmed, 3).filter((place) =>
+    wide ? withinIndia(place) : withinRadius(place, near),
+  );
+
+  let places: Place[] = [];
+  let failures = 0;
+
+  try {
+    places = await searchPhoton(trimmed, signal, near, wide);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    failures += 1;
+  }
+
+  const hasNearby = wide
+    ? places.some(withinIndia)
+    : places.some((place) => withinRadius(place, near));
+
+  // Photon sometimes ranks distant villages first. Ask Nominatim for a
+  // location-bounded second opinion before telling the rider nothing matched.
+  if (!places.length || !hasNearby) {
     try {
-      places = await searchNominatim(query, signal);
-    } catch {
-      places = [];
+      const fallback = await searchNominatim(trimmed, signal, near, wide);
+      places = [...places, ...fallback];
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      failures += 1;
     }
   }
 
-  const local = searchPresetPlaces(query, 3);
-  const merged = [...local];
-  for (const place of places) {
-    if (merged.some((existing) => haversine(existing, place) < 90)) continue;
-    merged.push(place);
+  if (failures >= 2) {
+    // Curated Hyderabad places still work when the network is down.
+    if (localPresets.length) return dedupePlaces(localPresets).slice(0, 8);
+    throw new Error('Place search is unavailable. Check your connection and try again.');
   }
 
-  if (!merged.length) {
-    if (signal?.aborted) throw new Error('Search cancelled.');
-    throw new Error('No places matched. Try a landmark, street, or area in Hyderabad.');
-  }
-  return merged.slice(0, 8);
+  const usable = places.filter((place) => (wide ? withinIndia(place) : withinRadius(place, near)));
+  return dedupePlaces([...localPresets, ...usable]).slice(0, 8);
 }
 
 export async function reverseGeocode(lat: number, lon: number, signal?: AbortSignal): Promise<string> {

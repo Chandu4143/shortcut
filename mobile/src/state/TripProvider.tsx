@@ -2,18 +2,31 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import * as Location from 'expo-location';
 import type { Place, RoutePair, TravelMode, UserPosition } from '../types';
 import { findRoutes, reverseGeocode } from '../lib/routing';
-import { loadRecents, loadVoiceEnabled, saveRecent, saveVoiceEnabled } from '../lib/storage';
+import {
+  clearRecents,
+  loadRecents,
+  loadSavedPlaces,
+  loadVoiceEnabled,
+  removeSavedPlace,
+  saveRecent,
+  saveSavedPlace,
+  saveVoiceEnabled,
+  type SavedPlaceKind,
+  type SavedPlaces,
+} from '../lib/storage';
 import { HYDERABAD_CENTER } from '../data/places';
 
 type TripStatus = 'idle' | 'loading' | 'ready' | 'error';
 type LocationStatus = 'unknown' | 'granted' | 'denied' | 'unavailable';
 type PickTarget = 'origin' | 'destination' | null;
+export type ActiveRoute = 'shortest' | 'fastest';
 
 interface TripContextValue {
   origin: Place | null;
   destination: Place | null;
   mode: TravelMode;
   routes: RoutePair | null;
+  activeRoute: ActiveRoute;
   status: TripStatus;
   message: string;
   location: UserPosition | null;
@@ -21,10 +34,12 @@ interface TripContextValue {
   locating: boolean;
   pickTarget: PickTarget;
   recents: Place[];
+  savedPlaces: SavedPlaces;
   voiceEnabled: boolean;
   setOrigin: (place: Place | null) => void;
   setDestination: (place: Place | null) => void;
   setMode: (mode: TravelMode) => void;
+  setActiveRoute: (route: ActiveRoute) => void;
   swapEndpoints: () => void;
   setPickTarget: (target: PickTarget) => void;
   pickPlace: (place: Place) => void;
@@ -36,17 +51,22 @@ interface TripContextValue {
   startTracking: () => Promise<void>;
   stopTracking: () => void;
   setVoiceEnabled: (enabled: boolean) => void;
+  savePlace: (kind: SavedPlaceKind, place: Place) => Promise<void>;
+  forgetPlace: (kind: SavedPlaceKind) => Promise<void>;
+  clearRecentPlaces: () => Promise<void>;
 }
 
 const TripContext = createContext<TripContextValue | null>(null);
 
-const DEFAULT_MESSAGE = 'Routes follow mapped access and one-way restrictions.';
+const DEFAULT_MESSAGE = 'Shortest distance first, with mapped access and one-way rules.';
+const EMPTY_SAVED: SavedPlaces = { home: null, work: null };
 
 export function TripProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOriginState] = useState<Place | null>(null);
   const [destination, setDestinationState] = useState<Place | null>(null);
   const [mode, setModeState] = useState<TravelMode>('riding');
   const [routes, setRoutes] = useState<RoutePair | null>(null);
+  const [activeRoute, setActiveRoute] = useState<ActiveRoute>('shortest');
   const [status, setStatus] = useState<TripStatus>('idle');
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
   const [location, setLocation] = useState<UserPosition | null>(null);
@@ -54,6 +74,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   const [locating, setLocating] = useState(false);
   const [pickTarget, setPickTarget] = useState<PickTarget>(null);
   const [recents, setRecents] = useState<Place[]>([]);
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlaces>(EMPTY_SAVED);
   const [voiceEnabled, setVoiceEnabledState] = useState(true);
 
   const watchRef = useRef<Location.LocationSubscription | null>(null);
@@ -61,11 +82,14 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([loadRecents(), loadVoiceEnabled()]).then(([storedRecents, storedVoice]) => {
-      if (!active) return;
-      setRecents(storedRecents);
-      setVoiceEnabledState(storedVoice);
-    });
+    Promise.all([loadRecents(), loadVoiceEnabled(), loadSavedPlaces()]).then(
+      ([storedRecents, storedVoice, storedSaved]) => {
+        if (!active) return;
+        setRecents(storedRecents);
+        setVoiceEnabledState(storedVoice);
+        setSavedPlaces(storedSaved);
+      },
+    );
     return () => {
       active = false;
     };
@@ -107,6 +131,21 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
             kind: 'gps',
           },
         );
+        void reverseGeocode(position.lat, position.lon)
+          .then((label) => {
+            if (!active || isCoordinateLabel(label)) return;
+            setOriginState((current) => {
+              if (!current || current.kind !== 'gps') return current;
+              if (
+                Math.abs(current.lat - position.lat) > 0.0005 ||
+                Math.abs(current.lon - position.lon) > 0.0005
+              ) {
+                return current;
+              }
+              return { ...current, label };
+            });
+          })
+          .catch(() => undefined);
       }
     })().catch(() => {
       if (active) setLocationStatus('unavailable');
@@ -117,42 +156,112 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setRoutes(null);
-    setStatus('idle');
-    setMessage(DEFAULT_MESSAGE);
-  }, [origin, destination, mode]);
-
-  useEffect(() => {
     return () => {
       watchRef.current?.remove();
       watchRef.current = null;
     };
   }, []);
 
-  const setOrigin = useCallback((place: Place | null) => {
-    setOriginState(place);
-    setPickTarget(null);
-  }, []);
-
-  const setDestination = useCallback((place: Place | null) => {
-    setDestinationState(place);
-    setPickTarget(null);
-  }, []);
-
-  const setTravelMode = useCallback((next: TravelMode) => {
-    setModeState(next);
-  }, []);
-
-  const swapEndpoints = useCallback(() => {
-    setOriginState(destination);
-    setDestinationState(origin);
-  }, [destination, origin]);
-
-  const clearRoute = useCallback(() => {
+  const resetRoute = useCallback(() => {
+    requestRef.current += 1;
     setRoutes(null);
+    setActiveRoute('shortest');
     setStatus('idle');
     setMessage(DEFAULT_MESSAGE);
   }, []);
+
+  const setOrigin = useCallback(
+    (place: Place | null) => {
+      setOriginState(place);
+      setPickTarget(null);
+      resetRoute();
+    },
+    [resetRoute],
+  );
+
+  const setDestination = useCallback(
+    (place: Place | null) => {
+      setDestinationState(place);
+      setPickTarget(null);
+      resetRoute();
+    },
+    [resetRoute],
+  );
+
+  const requestRoute = useCallback(
+    async (from: Place, to: Place, travelMode: TravelMode): Promise<RoutePair | null> => {
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
+      setStatus('loading');
+      setMessage('Comparing the shortest and fastest mapped routes…');
+      try {
+        const pair = await findRoutes(from, to, travelMode);
+        if (requestRef.current !== requestId) return null;
+        setRoutes(pair);
+        setActiveRoute('shortest');
+        setStatus('ready');
+        setMessage(
+          pair.source === 'valhalla'
+            ? 'Shortest route found · mapped access rules applied.'
+            : 'Shortest route built from live OpenStreetMap street data.',
+        );
+        return pair;
+      } catch (caught) {
+        if (requestRef.current !== requestId) return null;
+        setRoutes(null);
+        setActiveRoute('shortest');
+        setStatus('error');
+        setMessage(caught instanceof Error ? caught.message : 'Route calculation failed. Try again.');
+        return null;
+      }
+    },
+    [],
+  );
+
+  /**
+   * Switching travel mode should re-route in place, not throw the rider back to
+   * the planner. The old route stays visible until the new one arrives.
+   */
+  const setTravelMode = useCallback(
+    (next: TravelMode) => {
+      if (next === mode) return;
+      setModeState(next);
+      if (!origin || !destination || !routes) return;
+      const requestId = requestRef.current + 1;
+      requestRef.current = requestId;
+      setStatus('loading');
+      findRoutes(origin, destination, next)
+        .then((pair) => {
+          if (requestRef.current !== requestId) return;
+          setRoutes(pair);
+          setActiveRoute('shortest');
+          setStatus('ready');
+          setMessage(
+            next === 'riding'
+              ? 'Riding route · mapped access rules applied.'
+              : 'Walking route · mapped access rules applied.',
+          );
+        })
+        .catch(() => {
+          if (requestRef.current !== requestId) return;
+          setStatus(routes ? 'ready' : 'error');
+          setMessage('Could not switch travel mode. Check your connection and try again.');
+        });
+    },
+    [destination, mode, origin, routes],
+  );
+
+  const swapEndpoints = useCallback(() => {
+    if (!origin && !destination) return;
+    setOriginState(destination);
+    setDestinationState(origin);
+    setPickTarget(null);
+    resetRoute();
+  }, [destination, origin, resetRoute]);
+
+  const clearRoute = useCallback(() => {
+    resetRoute();
+  }, [resetRoute]);
 
   const locateMe = useCallback(async (): Promise<Place | null> => {
     setLocating(true);
@@ -191,16 +300,18 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       setOriginState(place);
       setPickTarget(null);
       setMessage(DEFAULT_MESSAGE);
+      resetRoute();
       const centre = { lat: position.lat, lon: position.lon };
       const label = await reverseGeocode(position.lat, position.lon);
+      const resolved = isCoordinateLabel(label) ? 'My location' : label;
       setOriginState((existing) => {
         if (!existing || existing.kind !== 'gps') return existing;
         if (Math.abs(existing.lat - centre.lat) > 0.0005 || Math.abs(existing.lon - centre.lon) > 0.0005) {
           return existing;
         }
-        return { ...existing, label };
+        return { ...existing, label: resolved };
       });
-      return { ...place, label };
+      return { ...place, label: resolved };
     } catch {
       setLocationStatus('unavailable');
       setMessage('Could not get a GPS fix. Search for a starting point or try again outdoors.');
@@ -208,7 +319,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLocating(false);
     }
-  }, []);
+  }, [resetRoute]);
 
   const startTracking = useCallback(async () => {
     if (watchRef.current) return;
@@ -248,107 +359,108 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const calculate = useCallback(async () => {
-    if (!origin || !destination) {
+    if (!destination) {
       setStatus('error');
-      setMessage(
-        !destination
-          ? 'Add a destination to find the shortest route.'
-          : 'Add a starting point — or use your current location.',
-      );
+      setMessage('Choose a destination first.');
       return;
     }
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    setPickTarget(null);
-    setStatus('loading');
-    setMessage('Comparing the shortest and fastest mapped routes…');
-    try {
-      const pair = await findRoutes(origin, destination, mode);
-      if (requestRef.current !== requestId) return;
-      setRoutes(pair);
-      setStatus('ready');
-      setMessage(
-        pair.source === 'valhalla'
-          ? 'Shortest route found · mapped access rules applied.'
-          : 'Shortest route built from live OpenStreetMap street data.',
-      );
-      void saveRecent(destination).then(setRecents);
-    } catch (caught) {
-      if (requestRef.current !== requestId) return;
-      setRoutes(null);
+    if (!origin) {
       setStatus('error');
-      setMessage(caught instanceof Error ? caught.message : 'Route calculation failed. Try again.');
+      setMessage('Add a starting point — or use your current location.');
+      return;
     }
-  }, [destination, mode, origin]);
+    setPickTarget(null);
+    const pair = await requestRoute(origin, destination, mode);
+    if (pair) void saveRecent(destination).then(setRecents);
+  }, [destination, mode, origin, requestRoute]);
 
   const planQuickTrip = useCallback(
     async (to: Place) => {
-      const from: Place =
+      const from: Place | null =
         origin ??
         (location
           ? { lat: location.lat, lon: location.lon, label: 'My location', kind: 'gps' }
-          : DEMO_ORIGIN);
-      const requestId = requestRef.current + 1;
-      requestRef.current = requestId;
-      setOriginState(origin ?? from);
+          : null);
+      setOriginState(from);
       setDestinationState(to);
       setPickTarget(null);
-      setStatus('loading');
-      setMessage('Comparing the shortest and fastest mapped routes…');
-      try {
-        const pair = await findRoutes(from, to, mode);
-        if (requestRef.current !== requestId) return;
-        setRoutes(pair);
-        setStatus('ready');
-        setMessage(
-          pair.source === 'valhalla'
-            ? 'Shortest route found · mapped access rules applied.'
-            : 'Shortest route built from live OpenStreetMap street data.',
-        );
-        void saveRecent(to).then(setRecents);
-      } catch (caught) {
-        if (requestRef.current !== requestId) return;
-        setRoutes(null);
+      if (!from) {
+        resetRoute();
         setStatus('error');
-        setMessage(caught instanceof Error ? caught.message : 'Route calculation failed. Try again.');
+        setMessage('Add a starting point — or use your current location.');
+        return;
       }
+      const pair = await requestRoute(from, to, mode);
+      if (pair) void saveRecent(to).then(setRecents);
     },
-    [location, mode, origin],
+    [location, mode, origin, requestRoute, resetRoute],
   );
 
   const recalculateFrom = useCallback(
     async (place: Place): Promise<RoutePair | null> => {
       if (!destination) return null;
-      try {
-        const pair = await findRoutes(place, destination, mode);
-        setRoutes(pair);
-        setStatus('ready');
-        return pair;
-      } catch {
-        return null;
-      }
+      return requestRoute(place, destination, mode);
     },
-    [destination, mode],
+    [destination, mode, requestRoute],
   );
 
   const pickPlace = useCallback(
     (place: Place) => {
       if (pickTarget === 'origin') {
         setOriginState(place);
+        setPickTarget(null);
+        resetRoute();
+        void reverseGeocode(place.lat, place.lon).then((label) => {
+          const resolved = isCoordinateLabel(label) ? 'Pinned location' : label;
+          setOriginState((current) =>
+            current &&
+            Math.abs(current.lat - place.lat) < 0.00001 &&
+            Math.abs(current.lon - place.lon) < 0.00001
+              ? { ...current, label: resolved }
+              : current,
+          );
+        });
       } else if (pickTarget === 'destination') {
         setDestinationState(place);
-        void saveRecent(place).then(setRecents);
+        setPickTarget(null);
+        void planQuickTrip(place);
+        void reverseGeocode(place.lat, place.lon).then((label) => {
+          const resolved = isCoordinateLabel(label) ? 'Pinned location' : label;
+          const named = { ...place, label: resolved };
+          setDestinationState((current) =>
+            current &&
+            Math.abs(current.lat - place.lat) < 0.00001 &&
+            Math.abs(current.lon - place.lon) < 0.00001
+              ? { ...current, label: resolved }
+              : current,
+          );
+          void saveRecent(named).then(setRecents);
+        });
+      } else {
+        setPickTarget(null);
       }
-      setPickTarget(null);
     },
-    [pickTarget],
+    [pickTarget, planQuickTrip, resetRoute],
   );
+
+  const savePlace = useCallback(async (kind: SavedPlaceKind, place: Place) => {
+    setSavedPlaces(await saveSavedPlace(kind, place));
+  }, []);
+
+  const forgetPlace = useCallback(async (kind: SavedPlaceKind) => {
+    setSavedPlaces(await removeSavedPlace(kind));
+  }, []);
+
+  const clearRecentPlaces = useCallback(async () => {
+    setRecents(await clearRecents());
+  }, []);
 
   const value: TripContextValue = {
     origin,
     destination,
     mode,
     routes,
+    activeRoute,
     status,
     message,
     location,
@@ -356,10 +468,12 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     locating,
     pickTarget,
     recents,
+    savedPlaces,
     voiceEnabled,
     setOrigin,
     setDestination,
     setMode: setTravelMode,
+    setActiveRoute,
     swapEndpoints,
     setPickTarget,
     pickPlace,
@@ -371,6 +485,9 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     startTracking,
     stopTracking,
     setVoiceEnabled,
+    savePlace,
+    forgetPlace,
+    clearRecentPlaces,
   };
 
   return <TripContext.Provider value={value}>{children}</TripContext.Provider>;
@@ -382,8 +499,11 @@ export function useTrip() {
   return context;
 }
 
-function toUserPosition(location: Location.LocationObject): UserPosition {
-  return {
+function isCoordinateLabel(label: string) {
+  return /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(label.trim());
+}
+
+function toUserPosition(location: Location.LocationObject): UserPosition {  return {
     lat: location.coords.latitude,
     lon: location.coords.longitude,
     accuracy: location.coords.accuracy ?? undefined,
@@ -393,6 +513,7 @@ function toUserPosition(location: Location.LocationObject): UserPosition {
   };
 }
 
+/** Fallback used by demos and deep links when no location is available. */
 export const DEMO_ORIGIN: Place = {
   label: 'Koti, Hyderabad',
   lat: HYDERABAD_CENTER.lat,

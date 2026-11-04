@@ -67,7 +67,7 @@ export function ModeSwitch({
   variant?: 'light' | 'dark';
 }) {
   const dark = variant === 'dark';
-  const options: Array<{ key: TravelMode; label: string; icon: IconName }> = [
+  const options: { key: TravelMode; label: string; icon: IconName }[] = [
     { key: 'riding', label: 'Ride', icon: 'bicycle' },
     { key: 'walking', label: 'Walk', icon: 'walk' },
   ];
@@ -159,12 +159,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   modeOption: {
-    minWidth: 70,
+    minWidth: 72,
+    minHeight: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 9,
     paddingHorizontal: 12,
     borderRadius: radius.sm,
   },

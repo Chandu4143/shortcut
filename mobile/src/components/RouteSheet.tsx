@@ -1,22 +1,292 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { formatDistance, formatDuration, formatSaved, shortLabel } from '../lib/format';
+import { formatArrival, formatDistance, formatDuration } from '../lib/format';
 import { colors, fonts, radius, shadow } from '../theme';
 import type { RoutePair, TravelMode } from '../types';
-import { Kicker, Pill } from './Controls';
+import type { ActiveRoute } from '../state/TripProvider';
+import { Kicker } from './Controls';
 import { Sheet } from './Sheet';
 import { Tap } from './Tap';
 
 interface RouteSheetProps {
   routes: RoutePair;
   mode: TravelMode;
-  message: string;
+  activeRoute: ActiveRoute;
+  busy?: boolean;
+  onSelectRoute: (route: ActiveRoute) => void;
+  onModeChange: (mode: TravelMode) => void;
   onStart: () => void;
   onDetails: () => void;
   onChange: () => void;
   onDismiss: () => void;
+}
+
+export function RouteSheet({
+  routes,
+  mode,
+  activeRoute,
+  busy = false,
+  onSelectRoute,
+  onModeChange,
+  onStart,
+  onDetails,
+  onChange,
+  onDismiss,
+}: RouteSheetProps) {
+  const insets = useSafeAreaInsets();
+  const shortest = routes.shortest;
+  const fastest = routes.fastest;
+  const active = activeRoute === 'fastest' ? fastest : shortest;
+  const saved = Math.max(0, fastest.distanceMeters - shortest.distanceMeters);
+  const hasSaving = saved >= 25;
+  const savedPercent =
+    fastest.distanceMeters > 0 ? Math.round((saved / fastest.distanceMeters) * 100) : 0;
+  const timeDeltaMinutes = Math.round((fastest.durationSeconds - shortest.durationSeconds) / 60);
+  const warnings = active.warnings.slice(0, 2);
+  const parts = distanceParts(active.distanceMeters);
+
+  const banner =
+    activeRoute === 'shortest'
+      ? hasSaving
+        ? {
+            value: formatDistance(saved),
+            text: 'shorter than the fastest route',
+            detail: `${savedPercent}% less distance`,
+            tone: 'good' as const,
+          }
+        : {
+            value: 'Already optimal',
+            text: 'same distance as fastest',
+            detail: 'No shorter line was found',
+            tone: 'calm' as const,
+          }
+      : {
+          value: hasSaving ? `+${formatDistance(saved)}` : 'Same distance',
+          text: 'on the fastest route',
+          detail:
+            timeDeltaMinutes < 0
+              ? `${Math.abs(timeDeltaMinutes)} min quicker than the shortest`
+              : 'Same estimated time as the shortest',
+          tone: 'calm' as const,
+        };
+
+  return (
+    <Sheet style={[styles.sheet, { paddingBottom: insets.bottom + 10 }]}>
+      <View style={styles.headerRow}>
+        <Kicker>{activeRoute === 'shortest' ? 'Shortest route' : 'Fastest route'}</Kicker>
+        <View style={styles.headerActions}>
+          {busy ? <ActivityIndicator size="small" color={colors.teal} /> : null}
+          <View style={styles.modeToggle}>
+            <Tap
+              style={[styles.modeButton, mode === 'riding' && styles.modeButtonActive]}
+              onPress={() => onModeChange('riding')}
+              haptic="selection"
+              accessibilityRole="radio"
+              accessibilityState={{ selected: mode === 'riding' }}
+              accessibilityLabel="Switch to riding"
+            >
+              <Ionicons
+                name="bicycle"
+                size={12}
+                color={mode === 'riding' ? colors.coral : colors.muted}
+              />
+              <Text
+                style={[
+                  styles.modeButtonText,
+                  mode === 'riding' && styles.modeButtonTextActive,
+                ]}
+              >
+                Ride
+              </Text>
+            </Tap>
+            <Tap
+              style={[styles.modeButton, mode === 'walking' && styles.modeButtonActive]}
+              onPress={() => onModeChange('walking')}
+              haptic="selection"
+              accessibilityRole="radio"
+              accessibilityState={{ selected: mode === 'walking' }}
+              accessibilityLabel="Switch to walking"
+            >
+              <Ionicons
+                name="walk"
+                size={12}
+                color={mode === 'walking' ? colors.coral : colors.muted}
+              />
+              <Text
+                style={[
+                  styles.modeButtonText,
+                  mode === 'walking' && styles.modeButtonTextActive,
+                ]}
+              >
+                Walk
+              </Text>
+            </Tap>
+          </View>
+          <Tap
+            style={styles.closeButton}
+            onPress={onDismiss}
+            haptic="light"
+            accessibilityLabel="Close route"
+          >
+            <Ionicons name="close" size={17} color={colors.muted} />
+          </Tap>
+        </View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.heroRow}>
+          <View style={styles.distanceBlock}>
+            <Text style={styles.distanceValue}>
+              {parts.value}
+              <Text style={styles.distanceUnit}> {parts.unit}</Text>
+            </Text>
+            <Text style={styles.distanceCaption}>
+              {activeRoute === 'shortest' ? 'shortest mapped distance' : 'fastest route distance'}
+            </Text>
+          </View>
+          <View style={styles.timeBlock}>
+            <Text style={styles.timeValue}>{formatDuration(active.durationSeconds)}</Text>
+            <Text style={styles.timeCaption}>arrive {formatArrival(active.durationSeconds)}</Text>
+          </View>
+        </View>
+
+        <View style={[styles.savingBanner, banner.tone === 'good' ? styles.savingGood : styles.savingCalm]}>
+          <View style={[styles.savingIcon, banner.tone === 'good' ? styles.savingIconGood : styles.savingIconCalm]}>
+            <Ionicons
+              name={banner.tone === 'good' ? 'trending-down' : 'git-compare-outline'}
+              size={15}
+              color={banner.tone === 'good' ? colors.mint : colors.teal}
+            />
+          </View>
+          <View style={styles.savingCopy}>
+            <Text style={[styles.savingValue, banner.tone === 'calm' && styles.savingValueCalm]}>
+              {banner.value} <Text style={styles.savingUnit}>{banner.text}</Text>
+            </Text>
+            <Text style={styles.savingDetail}>{banner.detail}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Choose a route</Text>
+
+        <View style={styles.options}>
+          <RouteOption
+            label="Shortest"
+            note={hasSaving ? `${formatDistance(saved)} less distance` : 'Least distance'}
+            distance={shortest.distanceMeters}
+            duration={shortest.durationSeconds}
+            selected={activeRoute === 'shortest'}
+            onPress={() => onSelectRoute('shortest')}
+          />
+          <RouteOption
+            label="Fastest"
+            note={
+              timeDeltaMinutes < 0
+                ? `${Math.abs(timeDeltaMinutes)} min quicker`
+                : 'Conventional route'
+            }
+            distance={fastest.distanceMeters}
+            duration={fastest.durationSeconds}
+            selected={activeRoute === 'fastest'}
+            onPress={() => onSelectRoute('fastest')}
+          />
+        </View>
+
+        {warnings.length ? (
+          <View style={styles.warningCard}>
+            <Ionicons name="alert-circle" size={15} color={colors.amber} />
+            <View style={styles.warningCopy}>
+              {warnings.map((warning) => (
+                <Text key={warning} style={styles.warningText}>
+                  {warning}
+                </Text>
+              ))}
+            </View>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <View style={styles.actions}>
+        <Tap
+          style={styles.cta}
+          onPress={onStart}
+          haptic="medium"
+          accessibilityLabel="Start navigation"
+        >
+          <Ionicons name="navigate" size={18} color={colors.white} />
+          <Text style={styles.ctaText}>Start navigation</Text>
+        </Tap>
+        <Tap
+          style={styles.detailsButton}
+          onPress={onDetails}
+          haptic="light"
+          accessibilityLabel="Open turn-by-turn directions"
+        >
+          <Ionicons name="list" size={18} color={colors.ink} />
+          <Text style={styles.detailsText}>Directions</Text>
+        </Tap>
+      </View>
+
+      <View style={styles.footer}>
+        <Tap haptic="none" onPress={onChange} accessibilityLabel="Change destination">
+          <Text style={styles.footerLink}>Change destination</Text>
+        </Tap>
+        <Tap
+          haptic="none"
+          onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
+          accessibilityRole="link"
+          accessibilityLabel="Open map data attribution"
+        >
+          <Text style={styles.footerMuted}>© OpenStreetMap · no live traffic</Text>
+        </Tap>
+      </View>
+    </Sheet>
+  );
+}
+
+function RouteOption({
+  label,
+  note,
+  distance,
+  duration,
+  selected,
+  onPress,
+}: {
+  label: string;
+  note: string;
+  distance: number;
+  duration: number;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Tap
+      style={[styles.option, selected && styles.optionSelected]}
+      onPress={onPress}
+      haptic="selection"
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${label} route, ${formatDistance(distance)}, ${formatDuration(duration)}`}
+    >
+      <View style={[styles.radio, selected && styles.radioSelected]}>
+        {selected ? <View style={styles.radioCore} /> : null}
+      </View>
+      <View style={styles.optionCopy}>
+        <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{label}</Text>
+        <Text style={styles.optionNote}>{note}</Text>
+      </View>
+      <View style={styles.optionMetrics}>
+        <Text style={styles.optionDistance}>{formatDistance(distance)}</Text>
+        <Text style={styles.optionTime}>{formatDuration(duration)}</Text>
+      </View>
+    </Tap>
+  );
 }
 
 function distanceParts(meters: number): { value: string; unit: string } {
@@ -29,464 +299,254 @@ function distanceParts(meters: number): { value: string; unit: string } {
   };
 }
 
-export function RouteSheet({
-  routes,
-  mode,
-  message,
-  onStart,
-  onDetails,
-  onChange,
-  onDismiss,
-}: RouteSheetProps) {
-  const insets = useSafeAreaInsets();
-  const shortest = routes.shortest;
-  const fastest = routes.fastest;
-  const saved = Math.max(0, fastest.distanceMeters - shortest.distanceMeters);
-  const savedPercent =
-    fastest.distanceMeters > 0 ? Math.round((saved / fastest.distanceMeters) * 100) : 0;
-  const hasSaving = saved >= 25;
-  const parts = distanceParts(shortest.distanceMeters);
-  const maxDistance = Math.max(shortest.distanceMeters, fastest.distanceMeters, 1);
-  const warnings = shortest.warnings.slice(0, 2);
-  const sourceLabel = routes.source === 'valhalla' ? 'Valhalla · OSM data' : 'Live OSM street graph';
-
-  return (
-    <Sheet style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scroll}
-      >
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <Kicker>The short cut</Kicker>
-            <View style={styles.headerDot} />
-            <Text style={styles.headerMode}>{mode === 'riding' ? 'Ride' : 'Walk'}</Text>
-          </View>
-          <Tap
-            style={styles.closeButton}
-            onPress={onDismiss}
-            haptic="light"
-            accessibilityLabel="Close route"
-          >
-            <Ionicons name="close" size={17} color={colors.muted} />
-          </Tap>
-        </View>
-
-        <View style={styles.heroRow}>
-          <View style={styles.distanceBlock}>
-            <Text style={styles.distanceValue}>
-              {parts.value}
-              <Text style={styles.distanceUnit}> {parts.unit}</Text>
-            </Text>
-            <Text style={styles.distanceCaption}>least mapped distance</Text>
-          </View>
-          <View style={styles.timeCard}>
-            <View style={styles.timeIcon}>
-              <Ionicons name="time-outline" size={15} color={colors.teal} />
-            </View>
-            <Text style={styles.timeValue}>{formatDuration(shortest.durationSeconds)}</Text>
-            <Text style={styles.timeCaption}>estimated</Text>
-          </View>
-        </View>
-
-        <View style={styles.destinationRow}>
-          <Ionicons name="flag" size={12} color={colors.coral} />
-          <Text style={styles.destinationText} numberOfLines={1}>
-            {shortLabel(
-              routes.source === 'valhalla' ? 'Shortest usable route' : 'Shortest route from map data',
-              2,
-            )}
-          </Text>
-          <Pill label={sourceLabel} background={colors.surfaceAlt} color={colors.muted} />
-        </View>
-
-        <View style={styles.compareCard}>
-          <View style={styles.compareHeader}>
-            <Text style={styles.compareTitle}>Shortest vs fastest</Text>
-            {hasSaving ? (
-              <Pill
-                label={`${savedPercent}% shorter`}
-                background={colors.mintSoft}
-                color={colors.mint}
-                icon="trending-down"
-              />
-            ) : (
-              <Pill label="Already optimal" background={colors.mintSoft} color={colors.mint} icon="checkmark" />
-            )}
-          </View>
-
-          <View style={styles.barRow}>
-            <View style={styles.barLabels}>
-              <View style={styles.barName}>
-                <View style={[styles.legendDot, { backgroundColor: colors.coral }]} />
-                <Text style={styles.barNameText}>Short Cut</Text>
-              </View>
-              <Text style={styles.barValue}>{formatDistance(shortest.distanceMeters)}</Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barFill,
-                  styles.barFillCoral,
-                  { width: `${Math.max(8, (shortest.distanceMeters / maxDistance) * 100)}%` },
-                ]}
-              />
-            </View>
-          </View>
-
-          <View style={styles.barRow}>
-            <View style={styles.barLabels}>
-              <View style={styles.barName}>
-                <View style={[styles.legendDot, { backgroundColor: colors.mutedLight }]} />
-                <Text style={styles.barNameText}>Fastest alternative</Text>
-              </View>
-              <Text style={styles.barValue}>{formatDistance(fastest.distanceMeters)}</Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barFill,
-                  styles.barFillSlate,
-                  { width: `${Math.max(8, (fastest.distanceMeters / maxDistance) * 100)}%` },
-                ]}
-              />
-            </View>
-          </View>
-
-          <View style={[styles.savingRow, !hasSaving && styles.savingRowMuted]}>
-            <View style={[styles.savingIcon, !hasSaving && styles.savingIconMuted]}>
-              <Ionicons
-                name={hasSaving ? 'git-compare-outline' : 'checkmark-circle-outline'}
-                size={15}
-                color={hasSaving ? colors.mint : colors.teal}
-              />
-            </View>
-            <View style={styles.savingCopy}>
-              <Text style={[styles.savingValue, !hasSaving && styles.savingValueMuted]}>
-                {hasSaving ? `You save ${formatSaved(saved)}` : 'No shorter mapped route found'}
-              </Text>
-              <Text style={styles.savingDetail}>
-                {hasSaving
-                  ? `${formatDuration(fastest.durationSeconds)} on the fastest route · ${formatPercent(
-                      shortest.durationSeconds,
-                      fastest.durationSeconds,
-                    )}`
-                  : 'This route is both the shortest and quickest option.'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {warnings.length ? (
-          <View style={styles.warningCard}>
-            <Ionicons name="alert-circle" size={16} color={colors.amber} />
-            <View style={styles.warningCopy}>
-              <Text style={styles.warningTitle}>Road notes</Text>
-              {warnings.map((warning) => (
-                <Text key={warning} style={styles.warningText}>
-                  {warning}
-                </Text>
-              ))}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.clearRow}>
-            <Ionicons name="shield-checkmark-outline" size={14} color={colors.teal} />
-            <Text style={styles.clearText}>
-              Mapped one-way and access restrictions are applied.
-            </Text>
-          </View>
-        )}
-
-        <Text style={styles.message} numberOfLines={2}>
-          {message}
-        </Text>
-      </ScrollView>
-
-      <View style={styles.actions}>
-        <Tap style={styles.cta} onPress={onStart} haptic="medium" accessibilityLabel="Start navigation">
-          <Ionicons name="navigate" size={18} color={colors.white} />
-          <Text style={styles.ctaText}>Start navigation</Text>
-          <View style={styles.ctaArrow}>
-            <Ionicons name="arrow-forward" size={16} color={colors.coral} />
-          </View>
-        </Tap>
-        <Tap
-          style={styles.detailsButton}
-          onPress={onDetails}
-          haptic="light"
-          accessibilityLabel="Route details"
-        >
-          <Ionicons name="list" size={19} color={colors.ink} />
-        </Tap>
-      </View>
-
-      <View style={styles.footer}>
-        <Tap haptic="none" onPress={onChange} accessibilityLabel="Change destination">
-          <Text style={styles.footerLink}>Change destination</Text>
-        </Tap>
-        <Tap
-          haptic="none"
-          onPress={() => Linking.openURL('https://www.openstreetmap.org/copyright')}
-          accessibilityLabel="Open map data attribution"
-        >
-          <Text style={styles.footerMuted}>© OpenStreetMap</Text>
-        </Tap>
-      </View>
-    </Sheet>
-  );
-}
-
-function formatPercent(shortestSeconds: number, fastestSeconds: number): string {
-  const delta = Math.round((fastestSeconds - shortestSeconds) / 60);
-  if (delta >= 1) return `${delta} min slower`;
-  if (delta <= -1) return `${Math.abs(delta)} min faster`;
-  return 'about the same time';
-}
-
 const styles = StyleSheet.create({
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    maxHeight: '82%',
-  },
-  scroll: {
-    paddingBottom: 8,
-  },
-  scrollView: {
-    flexShrink: 1,
+    maxHeight: '58%',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 30,
+    minHeight: 32,
+    gap: 8,
   },
-  headerLeft: {
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  headerDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.lineStrong,
+  modeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
   },
-  headerMode: {
+  modeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minWidth: 48,
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+  },
+  modeButtonActive: {
+    backgroundColor: colors.surface,
+    ...shadow.tiny,
+  },
+  modeButtonText: {
     fontFamily: fonts.semibold,
-    fontSize: 10,
+    fontSize: 10.5,
     color: colors.muted,
-    letterSpacing: 0.3,
+  },
+  modeButtonTextActive: {
+    color: colors.ink,
   },
   closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
+  },
+  scroll: {
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingBottom: 4,
   },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: 6,
+    marginTop: 4,
   },
   distanceBlock: {
     flex: 1,
   },
   distanceValue: {
     fontFamily: fonts.displayBold,
-    fontSize: 56,
-    lineHeight: 58,
-    letterSpacing: -3.2,
+    fontSize: 50,
+    lineHeight: 52,
+    letterSpacing: -2.8,
     color: colors.ink,
   },
   distanceUnit: {
     fontFamily: fonts.display,
-    fontSize: 25,
-    letterSpacing: -1,
+    fontSize: 23,
+    letterSpacing: -0.8,
     color: colors.inkSoft,
   },
   distanceCaption: {
-    marginTop: -2,
+    marginTop: -1,
     fontFamily: fonts.medium,
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.muted,
-    letterSpacing: 0.1,
   },
-  timeCard: {
-    minWidth: 92,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: radius.md,
-    backgroundColor: colors.tealSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(43,105,104,0.14)',
-    alignItems: 'flex-start',
-  },
-  timeIcon: {
-    marginBottom: 4,
+  timeBlock: {
+    alignItems: 'flex-end',
+    paddingBottom: 2,
   },
   timeValue: {
     fontFamily: fonts.displaySemibold,
-    fontSize: 20,
-    letterSpacing: -0.6,
-    color: colors.teal,
+    fontSize: 22,
+    letterSpacing: -0.7,
+    color: colors.ink,
   },
   timeCaption: {
+    marginTop: 1,
     fontFamily: fonts.medium,
-    fontSize: 9.5,
-    color: colors.teal,
-    opacity: 0.68,
-  },
-  destinationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  destinationText: {
-    flexShrink: 1,
-    fontFamily: fonts.medium,
-    fontSize: 11,
+    fontSize: 10.5,
     color: colors.muted,
   },
-  compareCard: {
-    padding: 14,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    ...shadow.tiny,
-  },
-  compareHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 13,
-  },
-  compareTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 11,
-    letterSpacing: 0.2,
-    color: colors.ink,
-  },
-  barRow: {
-    marginBottom: 10,
-  },
-  barLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  barName: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  barNameText: {
-    fontFamily: fonts.medium,
-    fontSize: 10.5,
-    color: colors.inkSoft,
-  },
-  barValue: {
-    fontFamily: fonts.bold,
-    fontSize: 10.5,
-    color: colors.ink,
-  },
-  barTrack: {
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.surfaceAlt,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  barFillCoral: {
-    backgroundColor: colors.coral,
-  },
-  barFillSlate: {
-    backgroundColor: colors.mutedLight,
-    opacity: 0.72,
-  },
-  savingRow: {
+  savingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 2,
-    paddingTop: 11,
-    paddingHorizontal: 10,
-    paddingBottom: 9,
+    marginTop: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
     borderRadius: radius.md,
+  },
+  savingGood: {
     backgroundColor: colors.mintSoft,
   },
-  savingRowMuted: {
+  savingCalm: {
     backgroundColor: colors.tealSoft,
   },
   savingIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.6)',
   },
-  savingIconMuted: {
-    backgroundColor: 'rgba(255,255,255,0.55)',
+  savingIconGood: {
+    backgroundColor: 'rgba(255,255,255,0.66)',
+  },
+  savingIconCalm: {
+    backgroundColor: 'rgba(255,255,255,0.58)',
   },
   savingCopy: {
     flex: 1,
   },
   savingValue: {
     fontFamily: fonts.bold,
-    fontSize: 12.5,
-    color: colors.mint,
+    fontSize: 13,
     letterSpacing: -0.1,
+    color: colors.mint,
   },
-  savingValueMuted: {
+  savingValueCalm: {
     color: colors.teal,
+  },
+  savingUnit: {
+    fontFamily: fonts.medium,
   },
   savingDetail: {
     marginTop: 1,
     fontFamily: fonts.sans,
-    fontSize: 9.5,
-    lineHeight: 13,
+    fontSize: 10.5,
+    lineHeight: 14,
+    color: colors.muted,
+  },
+  sectionLabel: {
+    marginTop: 14,
+    marginBottom: 7,
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.muted,
+  },
+  options: {
+    gap: 7,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  optionSelected: {
+    borderColor: colors.coral,
+    backgroundColor: colors.coralSoft,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.6,
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioSelected: {
+    borderColor: colors.coral,
+    backgroundColor: colors.white,
+  },
+  radioCore: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.coral,
+  },
+  optionCopy: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  optionLabelSelected: {
+    color: colors.coralDeep,
+  },
+  optionNote: {
+    marginTop: 1,
+    fontFamily: fonts.sans,
+    fontSize: 10.5,
+    color: colors.muted,
+  },
+  optionMetrics: {
+    alignItems: 'flex-end',
+  },
+  optionDistance: {
+    fontFamily: fonts.bold,
+    fontSize: 12.5,
+    color: colors.ink,
+  },
+  optionTime: {
+    marginTop: 1,
+    fontFamily: fonts.medium,
+    fontSize: 10.5,
     color: colors.muted,
   },
   warningCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 9,
-    marginTop: 12,
-    padding: 11,
-    borderRadius: radius.md,
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: radius.sm,
     backgroundColor: colors.amberSoft,
   },
   warningCopy: {
     flex: 1,
     gap: 2,
-  },
-  warningTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 10,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: colors.amber,
   },
   warningText: {
     fontFamily: fonts.sans,
@@ -494,38 +554,17 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: colors.inkSoft,
   },
-  clearRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    marginTop: 12,
-    paddingHorizontal: 2,
-  },
-  clearText: {
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: 10,
-    color: colors.muted,
-  },
-  message: {
-    marginTop: 9,
-    fontFamily: fonts.sans,
-    fontSize: 9.5,
-    lineHeight: 13,
-    color: colors.mutedLight,
-  },
   actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
+    gap: 8,
+    marginTop: 10,
   },
   cta: {
-    flex: 1,
+    flex: 1.6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 9,
+    gap: 8,
     height: 54,
     borderRadius: radius.md,
     backgroundColor: colors.coral,
@@ -538,44 +577,41 @@ const styles = StyleSheet.create({
   ctaText: {
     fontFamily: fonts.bold,
     fontSize: 14.5,
-    color: colors.white,
     letterSpacing: -0.1,
-  },
-  ctaArrow: {
-    position: 'absolute',
-    right: 12,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
+    color: colors.white,
   },
   detailsButton: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.md,
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    gap: 7,
+    height: 54,
+    borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+  },
+  detailsText: {
+    fontFamily: fonts.semibold,
+    fontSize: 12.5,
+    color: colors.ink,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
+    marginTop: 8,
     paddingHorizontal: 2,
   },
   footerLink: {
     fontFamily: fonts.semibold,
-    fontSize: 10,
+    fontSize: 10.5,
     color: colors.teal,
   },
   footerMuted: {
     fontFamily: fonts.medium,
-    fontSize: 9,
-    color: colors.mutedLight,
+    fontSize: 9.5,
+    color: colors.muted,
   },
 });

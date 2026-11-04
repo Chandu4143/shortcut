@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
-import React, { useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import React from 'react';
 import { Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Kicker, Pill } from '../components/Controls';
@@ -13,16 +14,15 @@ import type { Maneuver, RouteLine } from '../types';
 
 export default function DetailsScreen() {
   const insets = useSafeAreaInsets();
-  const { routes, mode, destination } = useTrip();
-  const [selection, setSelection] = useState<'shortest' | 'fastest'>('shortest');
+  const { routes, mode, destination, activeRoute, setActiveRoute } = useTrip();
 
   if (!routes) return <Redirect href="/" />;
 
   const shortest = routes.shortest;
   const fastest = routes.fastest;
-  const route: RouteLine = selection === 'shortest' ? shortest : fastest;
+  const isFastest = activeRoute === 'fastest';
+  const route: RouteLine = isFastest ? fastest : shortest;
   const saved = Math.max(0, fastest.distanceMeters - shortest.distanceMeters);
-  const isFastest = selection === 'fastest';
   const sourceLabel = routes.source === 'valhalla' ? 'Valhalla routing' : 'Live OSM graph';
 
   const shareRoute = () => {
@@ -35,6 +35,7 @@ export default function DetailsScreen() {
 
   return (
     <View style={styles.root}>
+      <StatusBar style="dark" />
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Tap
           style={styles.headerButton}
@@ -66,8 +67,8 @@ export default function DetailsScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.heroTopRow}>
-            <Kicker color={colors.mint}>
-              {isFastest ? 'Fastest alternative' : 'The shortest route'}
+            <Kicker color={colors.mintBright}>
+              {isFastest ? 'Fastest route' : 'Shortest route'}
             </Kicker>
             <View style={styles.heroPill}>
               <View style={styles.heroPillDot} />
@@ -97,12 +98,15 @@ export default function DetailsScreen() {
           <View style={styles.heroRule} />
 
           <View style={styles.heroStats}>
-            <HeroStat label="Fastest" value={formatDistance(fastest.distanceMeters)} />
+            <HeroStat
+              label={isFastest ? 'Shortest' : 'Fastest'}
+              value={formatDistance(isFastest ? shortest.distanceMeters : fastest.distanceMeters)}
+            />
             <View style={styles.heroStatRule} />
             <HeroStat
-              label={saved >= 25 ? 'You save' : 'Difference'}
+              label={saved >= 25 ? (isFastest ? 'Extra' : 'You save') : 'Difference'}
               value={saved >= 25 ? formatSaved(saved) : 'Optimal'}
-              accent={saved >= 25}
+              accent={!isFastest && saved >= 25}
             />
             <View style={styles.heroStatRule} />
             <HeroStat label="Mode" value={mode === 'riding' ? 'Ride' : 'Walk'} />
@@ -115,14 +119,14 @@ export default function DetailsScreen() {
             label="Shortest"
             distance={shortest.distanceMeters}
             color={colors.coral}
-            onPress={() => setSelection('shortest')}
+            onPress={() => setActiveRoute('shortest')}
           />
           <RouteTab
             active={isFastest}
             label="Fastest"
             distance={fastest.distanceMeters}
             color={colors.teal}
-            onPress={() => setSelection('fastest')}
+            onPress={() => setActiveRoute('fastest')}
           />
         </View>
 
@@ -130,11 +134,18 @@ export default function DetailsScreen() {
           <View style={styles.noteRow}>
             <Ionicons name="information-circle-outline" size={14} color={colors.muted} />
             <Text style={styles.noteText}>
-              The fastest alternative is shown for comparison only. Short Cut still defaults to
-              the least-distance route.
+              This route is {formatSaved(saved)} longer but quicker on mapped streets. Times
+              exclude live traffic.
             </Text>
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.noteRow}>
+            <Ionicons name="git-commit-outline" size={14} color={colors.muted} />
+            <Text style={styles.noteText}>
+              Distance-first route. Mapped one-way and access rules are applied.
+            </Text>
+          </View>
+        )}
 
         {route.warnings.length ? (
           <View style={styles.warningCard}>
@@ -266,6 +277,11 @@ function ManeuverItem({
   distance: number;
   last: boolean;
 }) {
+  const detail = maneuver.detail?.trim();
+  const redundant =
+    Boolean(detail) &&
+    detail!.replace(/[.\s]/g, '').toLowerCase() ===
+      maneuver.instruction.replace(/[.\s]/g, '').toLowerCase();
   return (
     <View style={styles.stepRow}>
       <View style={styles.stepRail}>
@@ -282,9 +298,9 @@ function ManeuverItem({
       </View>
       <View style={[styles.stepCopy, !last && styles.stepCopyBorder]}>
         <Text style={styles.stepTitle}>{maneuver.instruction}</Text>
-        {maneuver.detail ? (
+        {detail && !redundant ? (
           <Text style={styles.stepDetail} numberOfLines={2}>
-            {maneuver.detail}
+            {detail}
           </Text>
         ) : null}
       </View>
@@ -360,7 +376,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.mintBright,
   },
   heroPillText: {
     fontFamily: fonts.bold,
@@ -388,13 +404,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 22,
     letterSpacing: -0.8,
-    color: 'rgba(240,242,233,0.72)',
+    color: 'rgba(240,242,233,0.78)',
   },
   heroCaption: {
     marginTop: 1,
     fontFamily: fonts.medium,
     fontSize: 9.5,
-    color: 'rgba(240,242,233,0.5)',
+    color: 'rgba(240,242,233,0.68)',
   },
   heroTime: {
     alignItems: 'flex-end',
@@ -430,7 +446,7 @@ const styles = StyleSheet.create({
     fontSize: 8,
     letterSpacing: 0.9,
     textTransform: 'uppercase',
-    color: 'rgba(240,242,233,0.45)',
+    color: 'rgba(240,242,233,0.62)',
   },
   heroStatValue: {
     fontFamily: fonts.displaySemibold,
@@ -439,7 +455,7 @@ const styles = StyleSheet.create({
     color: colors.paper,
   },
   heroStatAccent: {
-    color: colors.mint,
+    color: colors.mintBright,
   },
   switcher: {
     flexDirection: 'row',
@@ -481,7 +497,7 @@ const styles = StyleSheet.create({
   tabDistance: {
     fontFamily: fonts.bold,
     fontSize: 9.5,
-    color: colors.mutedLight,
+    color: colors.muted,
   },
   tabDistanceActive: {
     color: colors.inkSoft,
