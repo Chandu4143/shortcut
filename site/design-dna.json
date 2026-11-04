@@ -107,6 +107,7 @@
       "input_style": "not used on the marketing page; the app's white field with 8px radius is echoed in the demo panel",
       "card_style": "warm white sheet, 26px radius, 1px hairline, soft shadow, generous 32-40px padding",
       "navigation_pattern": "sticky single-row header with brand lockup, text links, version chip and a persistent download button",
+      "footer_pattern": "full-bleed ink block that closes the page: a small-caps ticker band fading at the right edge, the oversized Space Grotesk slogan with a coral full stop, a right-hand download column, then two link rows and fine print on a hairline",
       "modal_style": "none; disclosure uses native details/summary to stay keyboard and reader friendly",
       "list_style": "rows separated by hairlines with a leading glyph and a trailing metric, mirroring the app's place list",
       "component_notes": "The phone frame is the only chrome; screenshots sit inside it at their real 9:20 aspect."

@@ -521,23 +521,62 @@
     </main>
 
     <footer class="site-footer">
+      <div class="site-footer__ticker" aria-hidden="true">
+        <div class="site-footer__ticker-track">
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+          <span>Take the shorter street</span><i></i>
+        </div>
+      </div>
+
       <div class="shell site-footer__inner">
-        <div class="site-footer__brand">
-          <a class="brand" href="#top" aria-label="Short Cut, back to top">
-            <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span class="brand__word">short<span>cut</span></span>
-          </a>
-          <p>Distance-first navigation, built in Hyderabad.</p>
+        <div class="site-footer__lead">
+          <p class="site-footer__eyebrow">Short Cut · 1.0.0</p>
+          <p class="site-footer__display">Take the<br />shorter street<span class="site-footer__accent">.</span></p>
         </div>
 
+        <div class="site-footer__cta">
+          <h2 class="site-footer__cta-title">Ready when you are.</h2>
+          <p class="site-footer__cta-copy">
+            The 64-bit build for Android 7.0 and newer. 41.0 MB, no account, no store listing — install it straight
+            from the v1.0.0 release.
+          </p>
+          <a class="btn btn--primary btn--block" href="https://github.com/Chandu4143/shortcut/releases/download/v1.0.0/ShortCut-1.0.0-arm64-v8a.apk" data-download>
+            Download the APK
+            <svg viewBox="0 0 20 20" aria-hidden="true" class="icon"><path d="M10 3v9m0 0 4-4m-4 4L6 8M4 15.5h12" /></svg>
+          </a>
+          <p class="site-footer__cta-note">
+            Debug-signed sideload build, not a Play Store release.
+            <a href="privacy.html">What it sends, and its limits</a>.
+          </p>
+        </div>
+      </div>
+
+      <div class="shell site-footer__bottom">
         <nav class="site-footer__links" aria-label="Project links">
           <a href="https://github.com/Chandu4143/shortcut">Source</a>
           <a href="https://github.com/Chandu4143/shortcut/releases">All releases</a>
           <a href="privacy.html">Privacy &amp; limitations</a>
+        </nav>
+        <nav class="site-footer__links" aria-label="Support links">
           <a href="https://github.com/Chandu4143/shortcut/issues">Report an issue</a>
           <a href="https://www.openstreetmap.org/copyright">OpenStreetMap attribution</a>
+          <a class="site-footer__icon" href="https://github.com/Chandu4143/shortcut" aria-label="Short Cut on GitHub">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" /></svg>
+          </a>
         </nav>
+      </div>
 
+      <div class="shell">
         <p class="site-footer__fine">
           Map data © OpenStreetMap contributors, available under the Open Database License. Routing by Valhalla with
           an Overpass fallback. Street coverage and access tags vary; review a route before you take it.
