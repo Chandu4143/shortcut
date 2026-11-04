@@ -32,8 +32,9 @@ Every asset lives on the [releases page](https://github.com/Chandu4143/shortcut/
 2. Open the downloaded file and allow **Install unknown apps** for your browser or file manager when Android asks.
 3. Launch **Short Cut** and allow location while using the app.
 
-The build is signed with a project debug keystore, which is fine for sideloading but **not** Play Store ready. Each
-asset's SHA-256 is in the release notes.
+This 1.0.0 APK is an **early sideload test build**, signed with the project's debug keystore. That is fine for
+installing on your own phone, but it is **not** a Play Store release: Android will warn about an unknown source,
+updates are manual, and no store protections apply. Each asset's SHA-256 is in the release notes.
 
 ## What it does
 
@@ -83,6 +84,21 @@ npx expo start
 
 Release APKs are produced from `mobile/` with the local Gradle build;
 `scripts/release/publish-release.ps1` attaches whatever it finds in `mobile/dist` to the `v1.0.0` release.
+
+## Privacy and limitations
+
+Location is read only while the app is open — there is no background location permission and no location history.
+Saved places, recent trips and the voice setting stay in the app's private storage on the device. Map tiles,
+search text and route coordinates are sent to the public services that answer them (OpenFreeMap, Valhalla,
+Nominatim, Photon, an Overpass fallback), which necessarily see your IP address. There is no account, no analytics
+and no advertising SDK.
+
+The app needs a connection, has **no live traffic**, depends on OpenStreetMap coverage and access tags, and relies
+on public endpoints that can fail or rate-limit. The 1.0.0 build is a debug-signed sideload for testing, not a Play
+Store release.
+
+Full detail, including every external service and how to report a problem:
+**https://chandu4143.github.io/shortcut/privacy.html**
 
 ## Data and attribution
 

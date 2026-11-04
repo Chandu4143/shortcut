@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy and limitations — Short Cut</title>
+    <meta
+      name="description"
+      content="What Short Cut does with your location, which public map, search and routing services receive requests, what stays on your phone, and the limits of this early Android build."
+    />
+    <meta name="theme-color" content="#F0F2E9" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="canonical" href="https://chandu4143.github.io/shortcut/privacy.html" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Short Cut — privacy and limitations" />
+    <meta
+      property="og:description"
+      content="Location handling, external services, on-device storage and the limits of the Short Cut 1.0.0 sideload build."
+    />
+    <meta property="og:url" content="https://chandu4143.github.io/shortcut/privacy.html" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell site-header__inner">
+        <a class="brand" href="index.html" aria-label="Short Cut, back to the overview">
+          <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="brand__word">short<span>cut</span></span>
+        </a>
+
+        <nav class="site-nav" aria-label="Page">
+          <a href="index.html#route">The route</a>
+          <a href="index.html#screens">Screens</a>
+          <a href="index.html#install">Install</a>
+          <a href="privacy.html" aria-current="page">Privacy</a>
+        </nav>
+
+        <div class="site-header__actions">
+          <span class="version-chip"><span aria-hidden="true"></span>v1.0.0</span>
+          <a class="btn btn--primary btn--small" href="index.html#install">
+            Download APK
+            <svg viewBox="0 0 20 20" aria-hidden="true" class="icon"><path d="M10 3v9m0 0 4-4m-4 4L6 8M4 15.5h12" /></svg>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="legal-hero">
+        <div class="shell">
+          <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span>Privacy &amp; limitations</p>
+          <h1 class="legal-hero__title">What Short Cut knows.</h1>
+          <p class="legal-hero__lede">
+            Short Cut is a free pilot for Hyderabad, not a data business. This page lists exactly what the app asks
+            your phone for, which services see a request, what stays on the device, and where this build falls short.
+          </p>
+          <p class="legal-hero__meta">Applies to Short Cut 1.0.0 for Android · last updated 4 November 2026</p>
+
+          <ul class="legal-glance">
+            <li>
+              <strong>No account</strong>
+              <span>Nothing to sign up for, no profile, no login.</span>
+            </li>
+            <li>
+              <strong>No analytics or ads</strong>
+              <span>The app ships no tracking or advertising SDK.</span>
+            </li>
+            <li>
+              <strong>Foreground location only</strong>
+              <span>No background permission and no location history.</span>
+            </li>
+            <li>
+              <strong>Saved things stay local</strong>
+              <span>Home, Work and recent trips live in app storage.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section legal">
+        <div class="shell legal__inner">
+          <nav class="legal__toc" aria-label="On this page">
+            <p class="legal__toc-title">On this page</p>
+            <ol>
+              <li><a href="#location">Location</a></li>
+              <li><a href="#services">What leaves your phone</a></li>
+              <li><a href="#storage">What stays on your phone</a></li>
+              <li><a href="#limitations">Limitations</a></li>
+              <li><a href="#report">Reporting a problem</a></li>
+            </ol>
+          </nav>
+
+          <div class="legal__body">
+            <section id="location">
+              <h2>Location</h2>
+              <p>
+                The app asks for <strong>location while using the app</strong>. It is used to set your start point,
+                show where you are on the map, follow progress during navigation, detect that you have left the
+                route so it can reroute, and time the spoken prompts.
+              </p>
+              <p>
+                There is no background location permission. When you switch to another app or lock the screen,
+                location updates pause and navigation can fall behind until you return. The app does not write a
+                location log, does not keep a trip history, and does not send your position to any Short Cut server —
+                there is no Short Cut server.
+              </p>
+              <p>
+                You can deny or revoke location in Android settings at any time. Search and the map still work, and
+                you can pick a start point by hand.
+              </p>
+            </section>
+
+            <section id="services">
+              <h2>What leaves your phone</h2>
+              <p>
+                Map tiles, search and routing are live services. A request necessarily reveals your IP address to
+                the service that answers it, and the place you searched or routed is part of the request. These
+                endpoints are public and independently operated; their own privacy policies apply, and this project
+                does not control them.
+              </p>
+
+              <div class="legal__table-wrap">
+                <table class="legal__table">
+                  <caption class="visually-hidden">External services contacted by the app</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Service</th>
+                      <th scope="col">What it receives</th>
+                      <th scope="col">Why</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">OpenFreeMap<br /><span>tiles.openfreemap.org</span></th>
+                      <td>The map area you are viewing, plus your IP address.</td>
+                      <td>Map tiles, fonts and sprites, drawn from OpenStreetMap data.</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Valhalla demo server<br /><span>valhalla1.openstreetmap.de</span></th>
+                      <td>Start and destination coordinates, and the travel mode.</td>
+                      <td>Calculates the distance-first route and its turn-by-turn steps.</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Photon<br /><span>photon.komoot.io</span></th>
+                      <td>Your search text.</td>
+                      <td>Primary place search.</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Nominatim<br /><span>nominatim.openstreetmap.org</span></th>
+                      <td>Your search text; coordinates when a GPS fix is turned into a street name.</td>
+                      <td>Backup place search, and naming your current location.</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Overpass API<br /><span>overpass.private.coffee · overpass-api.de · maps.mail.ru</span></th>
+                      <td>A small bounding box around the route, and the street tags inside it.</td>
+                      <td>Fallback route calculation when Valhalla is unavailable.</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">GitHub<br /><span>github.com</span></th>
+                      <td>Your IP address when you download the APK.</td>
+                      <td>Delivers the release file and this site.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <p class="legal__note">
+                No API keys, accounts or device identifiers are sent. The app does not upload contacts, photos,
+                files, microphone audio or motion data, and it does not request those permissions.
+              </p>
+            </section>
+
+            <section id="storage">
+              <h2>What stays on your phone</h2>
+              <p>The app keeps a small amount of state in its private storage so the next launch is quicker:</p>
+              <ul>
+                <li>Your saved <strong>Home</strong> and <strong>Work</strong> places.</li>
+                <li>The <strong>last five recent destinations</strong>.</li>
+                <li>Whether spoken prompts are on or off.</li>
+              </ul>
+              <p>
+                Nothing in that list is uploaded to this project. “Clear” on the Recent list removes those entries;
+                changing or removing a saved place overwrites it; clearing the app's storage in Android settings or
+                uninstalling the app removes everything.
+              </p>
+              <p>
+                Android's own backup setting can include app data in your device backup if you have backup enabled.
+                That copy belongs to your Google account and is controlled by your phone's settings, not by Short Cut.
+              </p>
+            </section>
+
+            <section id="limitations">
+              <h2>Limitations</h2>
+              <p>
+                This is an early build meant for testing in Hyderabad. It should not be treated as a dependable
+                replacement for a mature navigation app.
+              </p>
+              <ul>
+                <li>
+                  <strong>A connection is required.</strong> There are no offline maps. A route already on screen
+                  stays visible, but a new route, search or tile needs the network.
+                </li>
+                <li>
+                  <strong>No live traffic.</strong> Travel times are estimates from map data and posted speeds;
+                  congestion, closures and signals are not modelled.
+                </li>
+                <li>
+                  <strong>Map coverage varies.</strong> OpenStreetMap data can miss lanes, mislabel a one-way street
+                  or lag behind construction. Distance savings are only as good as the map underneath them.
+                </li>
+                <li>
+                  <strong>Public services are best effort.</strong> The routing, search and tile endpoints are shared
+                  and rate-limited. A failed request shows a retry message rather than a made-up route.
+                </li>
+                <li>
+                  <strong>Hyderabad first.</strong> Coverage and place data outside the city are thin, so routes
+                  elsewhere may be poor or missing.
+                </li>
+                <li>
+                  <strong>Unsigned by a store.</strong> The APK is signed with the project's debug key. Android will
+                  warn about installing an unknown app, updates are manual, and there are no Play Store protections.
+                </li>
+                <li>
+                  <strong>Battery and GPS.</strong> Continuous location during navigation uses battery, and accuracy
+                  drops between buildings, under flyovers and in poor sky view.
+                </li>
+                <li>
+                  <strong>Guidance, not instruction.</strong> Signs, one-way rules, closures and police directions
+                  outrank the app. Review the route before you ride.
+                </li>
+              </ul>
+            </section>
+
+            <section id="report">
+              <h2>Reporting a problem</h2>
+              <p>
+                Bugs, privacy questions and map complaints all go to the same place: the project's
+                <a href="https://github.com/Chandu4143/shortcut/issues">issue tracker</a>.
+              </p>
+              <p>For a routing or navigation bug, include:</p>
+              <ul>
+                <li>Phone model and Android version.</li>
+                <li>App version (1.0.0) and which APK you installed.</li>
+                <li>The start and destination you used, as place names.</li>
+                <li>What you expected, what happened, and a screenshot if you have one.</li>
+              </ul>
+              <p>
+                You do not need to share your live location or personal details. If the problem is the map itself,
+                a missing or wrong street can also be fixed upstream at
+                <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, which improves the next route for
+                everyone.
+              </p>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell site-footer__inner">
+        <div class="site-footer__brand">
+          <a class="brand" href="index.html" aria-label="Short Cut, back to the overview">
+            <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="brand__word">short<span>cut</span></span>
+          </a>
+          <p>Distance-first navigation, built in Hyderabad.</p>
+        </div>
+
+        <nav class="site-footer__links" aria-label="Project links">
+          <a href="index.html">Overview</a>
+          <a href="https://github.com/Chandu4143/shortcut">Source</a>
+          <a href="https://github.com/Chandu4143/shortcut/releases">All releases</a>
+          <a href="https://github.com/Chandu4143/shortcut/issues">Report an issue</a>
+          <a href="https://www.openstreetmap.org/copyright">OpenStreetMap attribution</a>
+        </nav>
+
+        <p class="site-footer__fine">
+          Map data © OpenStreetMap contributors, available under the Open Database License. Routing by Valhalla with
+          an Overpass fallback. Street coverage and access tags vary; review a route before you take it. This build
+          is signed with the project's debug key and is not a Play Store release.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

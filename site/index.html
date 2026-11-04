@@ -361,8 +361,8 @@
           <div class="install__copy">
             <h2 class="section__title">Install it in a minute.</h2>
             <p class="section__lede">
-              There is no store listing and no sign-up. The file below is the signed release build, served straight
-              from this project's GitHub releases.
+              There is no store listing and no sign-up. The file below is an early sideload test build, signed with
+              this project's debug key and served straight from the GitHub releases. It is not a Play Store release.
             </p>
 
             <ol class="steps">
@@ -395,7 +395,7 @@
               <span class="build-card__mark" aria-hidden="true"><i></i><i></i><i></i></span>
               <div>
                 <h3 id="build-card-title">Short Cut 1.0.0</h3>
-                <p>Release build for Android</p>
+                <p>Early sideload build for Android · debug-signed</p>
               </div>
             </div>
 
@@ -427,9 +427,30 @@
               </li>
             </ul>
 
+            <p class="build-card__signing">
+              Signed with the project's debug keystore, not a Play Store release key. This build is for testing and
+              sideloading; Android will warn that the app is from an unknown source.
+            </p>
+
             <details class="checksum">
-              <summary>SHA-256 checksum</summary>
-              <code>E7A4619AB8CFB682F4251F4B1F4FC1EC76B320183B112ACC5B1C4F54BA8A38EE</code>
+              <summary>SHA-256 checksums</summary>
+              <ul class="checksum__list">
+                <li>
+                  <span class="checksum__name">arm64-v8a · recommended</span>
+                  <code>E9FF81AEEE7E3687C39CD36154BA5B7D875D59D9787718D117C5850E8711ED22</code>
+                </li>
+                <li>
+                  <span class="checksum__name">armeabi-v7a</span>
+                  <code>EB4704916B1A09F43D770FA70AB55A44FC34DA3BAB98CB59C187F968B19CD150</code>
+                </li>
+                <li>
+                  <span class="checksum__name">x86_64</span>
+                  <code>31BE9F946AD2EB48CE66E79B383563AB6C0D41E1C7E83A5B4CD168A3968AD7F0</code>
+                </li>
+              </ul>
+              <p class="checksum__note">
+                Computed from the exact files attached to the v1.0.0 release on 4 November 2026.
+              </p>
             </details>
           </aside>
         </div>
@@ -456,8 +477,20 @@
             <details class="faq__item">
               <summary>Why does Android warn me about the file?</summary>
               <p>
-                The build is signed with a project key rather than a Play Store key, so Android asks you to confirm
-                installs from your browser. That prompt is expected for any app installed outside the store.
+                This is an early sideload test build signed with the project's debug key, not a Play Store release
+                key, so Android asks you to confirm installs from your browser. That prompt is expected for any app
+                installed outside the store. The build is not Play Store–ready and receives no store updates — new
+                versions are published on this page.
+              </p>
+            </details>
+            <details class="faq__item">
+              <summary>What does it do with my location?</summary>
+              <p>
+                Location is used on your phone to set the start point, show where you are and follow the route
+                during navigation. Search text and coordinates are sent to the public map, search and routing
+                services needed to answer a request. There is no account, no analytics and no location history
+                uploaded. Every service is listed on the
+                <a href="privacy.html">privacy and limitations page</a>.
               </p>
             </details>
             <details class="faq__item">
@@ -500,6 +533,7 @@
         <nav class="site-footer__links" aria-label="Project links">
           <a href="https://github.com/Chandu4143/shortcut">Source</a>
           <a href="https://github.com/Chandu4143/shortcut/releases">All releases</a>
+          <a href="privacy.html">Privacy &amp; limitations</a>
           <a href="https://github.com/Chandu4143/shortcut/issues">Report an issue</a>
           <a href="https://www.openstreetmap.org/copyright">OpenStreetMap attribution</a>
         </nav>

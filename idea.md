@@ -1,3 +1,13 @@
+> **Status: original product proposal, kept for history — not the current architecture.**
+> This document is the PRD written before the first build. The shipped app differs in three important ways:
+> routing runs on Valhalla (`valhalla1.openstreetmap.de`) with an OpenStreetMap Overpass fallback instead of a
+> self-hosted GraphHopper instance; there is no Node/Fastify backend, Supabase database, PostGIS or account
+> system — the app calls public endpoints and keeps saved places and recent trips on the device; and the map
+> is rendered with MapLibre against OpenFreeMap tiles. Every GraphHopper, backend and database reference below
+> describes the plan, not the implementation. For what actually ships, see [README.md](README.md); for what
+> data the app sends, see the
+> [privacy and limitations page](https://chandu4143.github.io/shortcut/privacy.html).
+
 I would approach **Short Cut** as a real navigation product, not just a Google Maps alternative with a different routing algorithm.
 
 The central philosophy should be:
@@ -645,6 +655,9 @@ OpenStreetMap data is distributed under the ODbL license, so Short Cut must prov
 **Important:** Do not assume the public OpenStreetMap tile servers are a free production map-tile hosting service. Use a suitable tile provider or self-hosted infrastructure. [OSM Foundation Operations](https://operations.osmfoundation.org/policies/tiles/?utm_source=chatgpt.com)
 
 ### 6.2 Routing Infrastructure
+
+> **Superseded:** the 1.0.0 build uses Valhalla for distance-first routing, with an Overpass fallback when the
+> routing service is unavailable. The GraphHopper plan below was not implemented.
 
 Use a self-hosted GraphHopper instance.
 
