@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Short Cut — reel</title>
+<style>
+  @font-face { font-family: "Space Grotesk"; font-weight: 500; src: url("fonts/space-grotesk-500.woff2") format("woff2"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 600; src: url("fonts/space-grotesk-600.woff2") format("woff2"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 700; src: url("fonts/space-grotesk-700.woff2") format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-weight: 400; src: url("fonts/dm-sans-400.woff2") format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-weight: 500; src: url("fonts/dm-sans-500.woff2") format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-weight: 600; src: url("fonts/dm-sans-600.woff2") format("woff2"); }
+  @font-face { font-family: "DM Sans"; font-weight: 700; src: url("fonts/dm-sans-700.woff2") format("woff2"); }
+
+  :root {
+    --paper: #f0f2e9;
+    --paper-deep: #e7ebdf;
+    --surface: #fafbf5;
+    --ink: #172b28;
+    --ink-soft: #2b403b;
+    --muted: #5a6b65;
+    --muted-soft: #6d7d77;
+    --line: #dce2d4;
+    --line-strong: #c9d2c3;
+    --coral: #e45537;
+    --coral-cta: #d24627;
+    --coral-edge: #a9371e;
+    --teal: #2b6968;
+    --mint: #2faf7a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+
+  body {
+    font-family: "DM Sans", sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+
+  /* ---------- backdrop ---------- */
+  #grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(201, 210, 195, 0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(201, 210, 195, 0.55) 1px, transparent 1px);
+    background-size: 108px 108px;
+    -webkit-mask-image: radial-gradient(120% 78% at 62% 8%, #000 0%, rgba(0,0,0,0.35) 58%, transparent 82%);
+    mask-image: radial-gradient(120% 78% at 62% 8%, #000 0%, rgba(0,0,0,0.35) 58%, transparent 82%);
+    opacity: 0;
+  }
+
+  #route { position: absolute; inset: 0; width: 1080px; height: 1920px; }
+
+  /* ---------- brand lockup ---------- */
+  .brand { display: inline-flex; align-items: center; gap: 15px; }
+  .brand__mark {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3.6px;
+    width: 46px;
+    height: 46px;
+    padding-bottom: 12px;
+    background: linear-gradient(160deg, #ef6647, var(--coral-cta));
+    border-radius: 50%;
+    transform: rotate(-8deg);
+    box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.28);
+  }
+  .brand__mark i { display: block; width: 5.4px; border-radius: 4px; background: #fff; transform: skewX(-8deg); }
+  .brand__mark i:nth-child(1) { height: 9px; }
+  .brand__mark i:nth-child(2) { height: 15px; }
+  .brand__mark i:nth-child(3) { height: 21px; }
+  .brand__word {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 42px;
+    letter-spacing: -0.035em;
+    color: var(--ink);
+  }
+
+  #brand { position: absolute; left: 96px; top: 84px; }
+
+  /* ---------- type ---------- */
+  .overline {
+    font-family: "DM Sans", sans-serif;
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--teal);
+  }
+
+  .display {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+  }
+
+  .line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+  .line > span { display: block; will-change: transform; }
+
+  /* ---------- beat 0 ---------- */
+  #b0 { position: absolute; left: 96px; top: 286px; width: 888px; }
+  #b0 .overline { margin-bottom: 34px; }
+  #h1 { font-size: 118px; }
+  #h1 em { font-style: normal; }
+  #h1 .dot { color: var(--coral); }
+  #lede {
+    margin-top: 52px;
+    max-width: 720px;
+    font-size: 34px;
+    line-height: 1.45;
+    color: var(--muted);
+    opacity: 0;
+  }
+
+  /* ---------- beat 1 ---------- */
+  #b1 { position: absolute; left: 96px; top: 300px; width: 888px; }
+  #b1 .overline { margin-bottom: 26px; }
+  #b1 h2 { font-size: 92px; }
+  #b1 h2 .soft { color: var(--muted-soft); }
+  #compare {
+    margin-top: 74px;
+    width: 888px;
+    padding: 14px 40px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 30px;
+    box-shadow: 0 30px 70px rgba(23, 49, 46, 0.10);
+  }
+  .crow {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 30px 0;
+  }
+  .crow + .crow { border-top: 1px solid var(--line); }
+  .crow__dot { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--line-strong); flex: 0 0 auto; }
+  .crow--win .crow__dot { border-color: var(--coral); background: var(--coral); box-shadow: 0 0 0 7px rgba(228, 85, 55, 0.14); }
+  .crow__label { font-family: "Space Grotesk", sans-serif; font-size: 42px; font-weight: 600; letter-spacing: -0.02em; }
+  .crow__sub { margin-top: 5px; font-size: 25px; color: var(--muted); }
+  .crow__value { margin-left: auto; text-align: right; font-family: "Space Grotesk", sans-serif; font-size: 52px; font-weight: 600; letter-spacing: -0.03em; }
+  .crow--win .crow__label, .crow--win .crow__value { color: var(--coral); }
+  .crow__unit { font-size: 26px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+
+  #saveChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 40px;
+    padding: 20px 30px;
+    border-radius: 999px;
+    background: #e9f5ec;
+    border: 1px solid rgba(47, 175, 122, 0.28);
+    font-size: 31px;
+    font-weight: 600;
+    color: #1d7a54;
+  }
+  #saveChip svg { width: 30px; height: 30px; stroke: #1d7a54; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  #b1note { margin-top: 34px; font-size: 26px; line-height: 1.5; color: var(--muted); max-width: 720px; }
+
+  /* ---------- phones ---------- */
+  .phone { position: absolute; left: 50%; width: 520px; padding: 13px; background: #101f1d; border-radius: 74px;
+           box-shadow: 0 60px 120px rgba(16, 32, 30, 0.30), inset 0 0 0 1.5px rgba(255, 255, 255, 0.10); }
+  .phone::after { content: ""; position: absolute; top: 22px; left: 50%; width: 140px; height: 31px; transform: translateX(-50%);
+                  border-radius: 20px; background: #101f1d; z-index: 2; }
+  .phone__screen { overflow: hidden; border-radius: 62px; background: var(--paper); }
+  .phone img { display: block; width: 100%; height: auto; }
+
+  #phoneHome { top: 662px; margin-left: -260px; }
+  #phoneRoute { top: 632px; margin-left: -60px; }
+
+  /* ---------- beats 2/3 copy ---------- */
+  .caption { position: absolute; left: 96px; top: 262px; width: 888px; }
+  .caption .overline { margin-bottom: 24px; }
+  .caption h2 { font-size: 96px; }
+  .caption p { margin-top: 30px; font-size: 33px; line-height: 1.45; color: var(--muted); max-width: 760px; }
+
+  /* ---------- stat card ---------- */
+  #statCard {
+    position: absolute;
+    left: 96px;
+    top: 900px;
+    width: 420px;
+    padding: 36px 36px 32px;
+    background: rgba(250, 251, 245, 0.94);
+    border: 1px solid var(--line);
+    border-radius: 30px;
+    box-shadow: 0 34px 80px rgba(23, 49, 46, 0.18);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+  #statCard .k { font-family: ui-monospace, Menlo, monospace; font-size: 21px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  #statCard .v { margin-top: 10px; font-family: "Space Grotesk", sans-serif; font-size: 96px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+  #statCard .v small { font-size: 34px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+  #statCard .time { margin-top: 6px; font-size: 30px; color: var(--ink-soft); }
+  #statCard .delta { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 27px; font-weight: 600; line-height: 1.35; color: #1d7a54; }
+
+  /* ---------- beat 4 ---------- */
+  #b4 { position: absolute; left: 96px; top: 420px; width: 888px; }
+  #b4 .overline { margin-bottom: 26px; }
+  #b4 h2 { font-size: 84px; }
+  #rows { margin-top: 68px; border-top: 1px solid var(--line-strong); }
+  .frow { display: flex; align-items: center; gap: 26px; padding: 48px 4px; border-bottom: 1px solid var(--line-strong); }
+  .frow__n { font-family: ui-monospace, Menlo, monospace; font-size: 25px; color: var(--coral); width: 52px; }
+  .frow__t { font-family: "Space Grotesk", sans-serif; font-size: 40px; font-weight: 500; letter-spacing: -0.02em; }
+  .frow__t small { display: block; margin-top: 6px; font-family: "DM Sans", sans-serif; font-size: 26px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
+
+  /* ---------- end card ---------- */
+  #end {
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    color: var(--paper);
+    transform: translateY(100%);
+  }
+  #end .brand { position: absolute; left: 96px; top: 84px; }
+  #end .brand__word { color: var(--paper); }
+  #end .ver {
+    position: absolute; right: 96px; top: 100px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 22px; letter-spacing: 0.1em;
+    color: rgba(250, 251, 245, 0.45);
+  }
+  #endCopy { position: absolute; left: 96px; top: 566px; width: 888px; font-size: 118px; }
+  #endCopy .dot { color: var(--coral); }
+  #endRoute { position: absolute; inset: 0; width: 1080px; height: 1920px; }
+  #qrBlock {
+    position: absolute;
+    left: 96px;
+    top: 1404px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  #qrTile {
+    width: 252px;
+    height: 252px;
+    padding: 18px;
+    border-radius: 24px;
+    background: var(--paper);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
+  #qrTile img { display: block; width: 100%; height: 100%; }
+  .qrTitle {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 38px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--paper);
+  }
+  .qrSub { margin-top: 8px; font-size: 26px; color: rgba(250, 251, 245, 0.48); }
+  #cta {
+    position: absolute;
+    left: 96px;
+    top: 1044px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    width: 640px;
+    height: 118px;
+    border-radius: 999px;
+    background: var(--coral);
+    box-shadow: 0 9px 0 var(--coral-edge), 0 30px 60px rgba(0, 0, 0, 0.35);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 39px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #fff;
+  }
+  #cta svg { width: 34px; height: 34px; stroke: #fff; stroke-width: 2.1; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  #url {
+    position: absolute; left: 96px; top: 1218px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 27px; letter-spacing: 0.01em;
+    color: rgba(250, 251, 245, 0.72);
+  }
+  #fine {
+    position: absolute; left: 96px; top: 1278px;
+    font-size: 27px; color: rgba(250, 251, 245, 0.42);
+  }
+  #ticker {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 96px;
+    display: flex; align-items: center;
+    border-top: 1px solid rgba(250, 251, 245, 0.16);
+    overflow: hidden;
+  }
+  #tickerTrack { display: flex; align-items: center; white-space: nowrap; will-change: transform; }
+  .tickerRow {
+    display: flex; align-items: center; gap: 34px; padding-right: 34px;
+    font-family: "DM Sans", sans-serif; font-size: 24px; font-weight: 600;
+    letter-spacing: 0.24em; text-transform: uppercase; color: var(--coral);
+  }
+  .tickerRow i { display: block; width: 6px; height: 6px; border-radius: 50%; background: rgba(228, 85, 55, 0.55); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="grid"></div>
+
+  <svg id="route" viewBox="0 0 1080 1920" fill="none" aria-hidden="true">
+    <path id="routePath" d="M 96 1744 L 176 1706 L 214 1590 L 348 1560 L 372 1432 L 512 1402 L 552 1258 L 700 1230 L 726 1088 L 864 1058 L 892 926 L 962 884"
+          stroke="#E45537" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" />
+    <g id="pinA">
+      <circle cx="96" cy="1744" r="26" fill="#E45537" />
+      <circle cx="96" cy="1744" r="13" fill="#F0F2E9" />
+    </g>
+    <g id="pinB">
+      <circle cx="962" cy="884" r="60" fill="#E45537" opacity="0.13" />
+      <circle cx="962" cy="884" r="23" fill="#172B28" />
+      <circle cx="962" cy="884" r="9" fill="#F0F2E9" />
+    </g>
+  </svg>
+
+  <div class="brand" id="brand">
+    <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="brand__word">shortcut</span>
+  </div>
+
+  <div id="b0">
+    <p class="overline" id="b0Over">Distance-first navigation · Hyderabad</p>
+    <h1 class="display" id="h1">
+      <span class="line"><span id="h1a">Take the</span></span>
+      <span class="line"><span id="h1b">shorter street<span class="dot">.</span></span></span>
+    </h1>
+    <p id="lede">Ride or walk, ranked by metres — over the streets that are actually open to you.</p>
+  </div>
+
+
+  <div id="b1">
+    <p class="overline" id="b1Over">The trade-off</p>
+    <h2 class="display" style="font-size:92px">
+      <span class="line"><span id="b1a">Fastest isn't</span></span>
+      <span class="line"><span id="b1b">always shortest.</span></span>
+    </h2>
+
+    <div id="compare">
+      <div class="crow" id="row1">
+        <span class="crow__dot"></span>
+        <div>
+          <p class="crow__label">Fastest</p>
+          <p class="crow__sub">the route most apps give you</p>
+        </div>
+        <p class="crow__value">4.9<span class="crow__unit">km</span></p>
+      </div>
+      <div class="crow crow--win" id="row2">
+        <span class="crow__dot"></span>
+        <div>
+          <p class="crow__label">Shortest</p>
+          <p class="crow__sub">every street checked for access</p>
+        </div>
+        <p class="crow__value">4.7<span class="crow__unit">km</span></p>
+      </div>
+    </div>
+
+    <div id="saveChip">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16l6 4 12-14" /></svg>
+      200 m shorter · 4% less distance
+    </div>
+
+    <p id="b1note">Same trip. The difference is metres most apps never show you.</p>
+  </div>
+
+  <div class="caption" id="b2">
+    <p class="overline" id="b2Over">Plan</p>
+    <h2 class="display"><span class="line"><span id="b2a">Two taps.</span></span></h2>
+    <p id="b2p">Ride or walk, with one-way tags and access restrictions read from the map — not assumed.</p>
+  </div>
+
+  <div class="phone" id="phoneHome">
+    <div class="phone__screen"><img src="../../site/assets/app-home.png" alt="" /></div>
+  </div>
+
+  <div class="caption" id="b3">
+    <p class="overline" id="b3Over">The result</p>
+    <h2 class="display">
+      <span class="line"><span id="b3a">Same trip.</span></span>
+      <span class="line"><span id="b3b">200 m shorter.</span></span>
+    </h2>
+  </div>
+
+  <div class="phone" id="phoneRoute">
+    <div class="phone__screen"><img src="../../site/assets/app-route.png" alt="" /></div>
+  </div>
+
+  <div id="statCard">
+    <p class="k">Shortest route</p>
+    <p class="v">4.7<small>km</small></p>
+    <p class="time">19 min · arrive 3:26 PM</p>
+    <p class="delta">200 m less than the fastest route</p>
+  </div>
+
+  <div id="b4">
+    <p class="overline" id="b4Over">What you get</p>
+    <h2 class="display" style="font-size:84px">
+      <span class="line"><span id="b4a">Built for metres,</span></span>
+      <span class="line"><span id="b4b">not minutes.</span></span>
+    </h2>
+    <div id="rows">
+      <div class="frow" id="f1">
+        <span class="frow__n">01</span>
+        <p class="frow__t">Turn-by-turn, with spoken prompts<small>Live GPS, off-route rerouting, preview drive</small></p>
+      </div>
+      <div class="frow" id="f2">
+        <span class="frow__n">02</span>
+        <p class="frow__t">Ride and walk profiles<small>Routes that respect the streets you're allowed on</small></p>
+      </div>
+      <div class="frow" id="f3">
+        <span class="frow__n">03</span>
+        <p class="frow__t">No account. No ads. No store listing.<small>Direct APK, open data, nothing tracking you in the background</small></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="end">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="brand__word">shortcut</span>
+    </div>
+    <p class="ver">1.0.0 · ANDROID</p>
+
+    <h2 class="display" id="endCopy">
+      <span class="line"><span id="e1">Take the</span></span>
+      <span class="line"><span id="e2">shorter street<span class="dot">.</span></span></span>
+    </h2>
+
+    <div id="cta">
+      Download for Android
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 4-4m-4 4L6 8M4 15.5h12" /></svg>
+    </div>
+
+    <p id="url">chandu4143.github.io/shortcut</p>
+    <p id="fine">Free APK · Android 7+ · no account · sideload build</p>
+
+    <div id="qrBlock">
+      <div id="qrTile"><img src="assets/qr.png" alt="" /></div>
+      <div class="qrText">
+        <p class="qrTitle">Scan to install</p>
+        <p class="qrSub">APK · 41 MB · no account</p>
+      </div>
+    </div>
+
+    <div id="ticker">
+      <div id="tickerTrack">
+        <div class="tickerRow" id="tickerRow">
+          <span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i>
+        </div>
+        <div class="tickerRow" id="tickerRow2">
+          <span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i><span>Take the shorter street</span><i></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const seg = (t, a, b) => clamp01((t - a) / (b - a));
+const easeOut = (v) => 1 - Math.pow(1 - v, 3);
+const easeIn = (v) => v * v * v;
+const easeInOut = (v) => (v < 0.5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2);
+
+function set(el, { x = 0, y = 0, s = 1, r = 0, o = 1 } = {}) {
+  el.style.transform = `translate(${x}px, ${y}px) scale(${s}) rotate(${r}deg)`;
+  el.style.opacity = o;
+}
+
+// entrance: rise + fade, or a clip reveal for the display lines
+function line(el, t, a, b, dist = 105) {
+  const p = easeOut(seg(t, a, b));
+  el.style.transform = `translateY(${(1 - p) * dist}%)`;
+}
+
+function fade(el, t, a, b, dist = 0, dir = 1) {
+  const p = easeOut(seg(t, a, b));
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dist * dir}px)`;
+}
+
+// fade in and back out
+function pulse(el, t, a, b, c, d, dist = 36) {
+  const pin = easeOut(seg(t, a, b));
+  const pout = easeIn(seg(t, c, d));
+  el.style.opacity = pin * (1 - pout);
+  el.style.transform = `translateY(${(1 - pin) * dist - pout * dist * 0.7}px)`;
+}
+
+const routePath = $("routePath");
+const routeLen = routePath.getTotalLength();
+routePath.style.strokeDasharray = routeLen;
+routePath.style.strokeDashoffset = routeLen;
+
+const tickerRow = $("tickerRow");
+const tickerRow2 = $("tickerRow2");
+let tickerWidth = 0;
+
+function measure() {
+  tickerRow2.innerHTML = tickerRow.innerHTML;
+  tickerWidth = tickerRow.getBoundingClientRect().width;
+}
+
+const TOTAL = 18.4;
+
+function render(t) {
+  /* ---------------- beat 0 : title + route ---------------- */
+  const g = easeOut(seg(t, 0, 0.45));
+  $("grid").style.opacity = g * 0.95;
+  $("grid").style.transform = `scale(${1.04 - 0.04 * easeOut(seg(t, 0, TOTAL))})`;
+
+  const draw = easeInOut(seg(t, 0.05, 1.6));
+  routePath.style.strokeDashoffset = routeLen * (1 - draw);
+  $("route").style.opacity = 1 - easeIn(seg(t, 2.45, 2.95));
+
+  const pinIn = easeOut(seg(t, 1.0, 1.28));
+  $("pinA").style.opacity = pinIn;
+  $("pinA").style.transform = `scale(${0.4 + 0.6 * pinIn})`;
+  $("pinA").style.transformOrigin = "96px 1744px";
+
+  const pinB = easeOut(seg(t, 1.3, 1.58));
+  $("pinB").style.opacity = pinB;
+  $("pinB").style.transform = `scale(${0.4 + 0.6 * pinB})`;
+  $("pinB").style.transformOrigin = "962px 884px";
+
+  const b0Out = easeIn(seg(t, 2.4, 2.78));
+  $("b0").style.opacity = 1 - b0Out;
+  $("b0").style.transform = `translateY(${-70 * b0Out}px)`;
+  $("brand").style.opacity = easeOut(seg(t, 0.02, 0.3)) * (1 - b0Out);
+
+  fade($("b0Over"), t, 0.06, 0.34, 18);
+  fade($("lede"), t, 0.44, 0.78, 26);
+  line($("h1a"), t, 0.1, 0.48);
+  line($("h1b"), t, 0.2, 0.58);
+
+  /* ---------------- beat 1 : fastest vs shortest ---------------- */
+  const b1In = easeOut(seg(t, 2.55, 2.9));
+  const b1Out = easeIn(seg(t, 5.4, 5.78));
+  const b1 = $("b1");
+  b1.style.opacity = b1In * (1 - b1Out);
+  b1.style.transform = `translateY(${(1 - b1In) * 46 - b1Out * 60}px)`;
+
+  line($("b1a"), t, 2.62, 3.02);
+  line($("b1b"), t, 2.76, 3.16);
+
+  const card = easeOut(seg(t, 3.12, 3.52));
+  $("compare").style.opacity = card;
+  $("compare").style.transform = `translateY(${(1 - card) * 44}px)`;
+
+  fade($("row1"), t, 3.3, 3.68, 26);
+  fade($("row2"), t, 3.46, 3.84, 26);
+
+  const chip = easeOut(seg(t, 4.12, 4.5));
+  $("saveChip").style.opacity = chip;
+  $("saveChip").style.transform = `translateY(${(1 - chip) * 24}px) scale(${0.94 + 0.06 * chip})`;
+
+  fade($("b1note"), t, 4.34, 4.66, 20);
+
+  /* ---------------- beat 2 : plan screen ---------------- */
+  const b2Out = easeIn(seg(t, 8.92, 9.3));
+  const b2 = $("b2");
+  const b2In = easeOut(seg(t, 5.82, 6.2));
+  b2.style.opacity = b2In * (1 - b2Out);
+  b2.style.transform = `translateY(${(1 - b2In) * 40 - b2Out * 50}px)`;
+
+  line($("b2a"), t, 5.9, 6.3);
+  fade($("b2p"), t, 6.14, 6.52, 24);
+
+  const ph1 = easeOut(seg(t, 5.98, 6.86));
+  const ph1Out = easeIn(seg(t, 8.9, 9.28));
+  const ph1Hold = easeOut(seg(t, 6.86, 8.9));
+  const phoneHome = $("phoneHome");
+  phoneHome.style.opacity = ph1 * (1 - ph1Out);
+  phoneHome.style.transform =
+    `translate(${(1 - ph1) * 26}px, ${(1 - ph1) * 760 + ph1Out * 190}px) rotate(${(1 - ph1) * 4}deg) scale(${1 + 0.018 * ph1Hold - ph1Out * 0.06})`;
+
+  /* ---------------- beat 3 : result ---------------- */
+  const b3In = easeOut(seg(t, 9.28, 9.62));
+  const b3Out = easeIn(seg(t, 12.5, 12.88));
+  const b3 = $("b3");
+  b3.style.opacity = b3In * (1 - b3Out);
+  b3.style.transform = `translateY(${(1 - b3In) * 40 - b3Out * 70}px)`;
+
+  line($("b3a"), t, 9.36, 9.74);
+  line($("b3b"), t, 9.5, 9.88, 105);
+
+  const ph2 = easeOut(seg(t, 9.4, 10.16));
+  const ph2Out = easeIn(seg(t, 12.46, 12.84));
+  const ph2Hold = easeOut(seg(t, 10.16, 12.46));
+  const phoneRoute = $("phoneRoute");
+  phoneRoute.style.opacity = ph2 * (1 - ph2Out);
+  phoneRoute.style.transform =
+    `translate(0, ${(1 - ph2) * 700 + ph2Out * 210}px) rotate(${(1 - ph2) * -3}deg) scale(${1 + 0.02 * ph2Hold - ph2Out * 0.05})`;
+
+  const sc = easeOut(seg(t, 10.02, 10.46));
+  const scOut = easeIn(seg(t, 12.5, 12.86));
+  const statCard = $("statCard");
+  statCard.style.opacity = sc * (1 - scOut);
+  statCard.style.transform = `translateY(${(1 - sc) * 70 + scOut * 40}px) scale(${0.96 + 0.04 * sc})`;
+
+  /* ---------------- beat 4 : features ---------------- */
+  const b4In = easeOut(seg(t, 12.86, 13.2));
+  const b4Out = easeIn(seg(t, 15.24, 15.62));
+  const b4 = $("b4");
+  b4.style.opacity = b4In * (1 - b4Out);
+  b4.style.transform = `translateY(${(1 - b4In) * 46 - b4Out * 60}px)`;
+
+  line($("b4a"), t, 12.94, 13.34);
+  line($("b4b"), t, 13.06, 13.46);
+
+  fade($("rows"), t, 13.28, 13.5, 26);
+  fade($("f1"), t, 13.32, 13.66, 30);
+  fade($("f2"), t, 13.52, 13.86, 30);
+  fade($("f3"), t, 13.72, 14.06, 30);
+
+  /* ---------------- beat 5 : end card ---------------- */
+  const wipe = easeInOut(seg(t, 15.5, 15.98));
+  $("end").style.transform = `translateY(${(1 - wipe) * 100}%)`;
+
+  const eIn = easeOut(seg(t, 15.9, 16.24));
+  $("endCopy").style.opacity = eIn;
+  line($("e1"), t, 15.96, 16.32);
+  line($("e2"), t, 16.08, 16.46);
+
+  const cta = easeOut(seg(t, 16.42, 16.84));
+  $("cta").style.opacity = cta;
+  $("cta").style.transform = `translateY(${(1 - cta) * 34}px) scale(${0.96 + 0.04 * cta})`;
+
+  fade($("url"), t, 16.7, 17.02, 18);
+  fade($("fine"), t, 16.82, 17.14, 18);
+  fade($("qrBlock"), t, 16.98, 17.34, 26);
+
+  /* ticker: constant speed loop, runs only while the ink card is on screen */
+  if (tickerWidth > 0) {
+    const offset = (t * 62) % tickerWidth;
+    $("tickerTrack").style.transform = `translateX(${-offset}px)`;
+  }
+}
+
+window.__render = (t) => {
+  render(t);
+  return true;
+};
+
+window.__ready = document.fonts.ready.then(async () => {
+  await Promise.all(
+    [...document.images].map((img) => (img.complete ? null : new Promise((r) => { img.onload = r; img.onerror = r; })))
+  );
+  measure();
+  render(0);
+  return { tickerWidth, total: TOTAL, routeLen };
+});
+</script>
+</body>
+</html>
